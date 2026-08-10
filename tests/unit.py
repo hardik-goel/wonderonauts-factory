@@ -71,6 +71,11 @@ def test_concat_paths():
 
 def test_srt():
     check(factory.srt_ts(0) == "00:00:00,000", "srt timestamp at zero")
+    # regression: a fraction that rounds up used to emit ",1000" (4 digits)
+    for t in (1.9999, 59.9996, 3599.9999):
+        ms = factory.srt_ts(t).split(",")[1]
+        check(len(ms) == 3 and int(ms) < 1000, f"srt ms stays 3 digits at {t}",
+              factory.srt_ts(t))
     check(factory.srt_ts(3661.5) == "01:01:01,500", "srt timestamp at 1h01m01.5s",
           factory.srt_ts(3661.5))
     check(factory.fmt_ts(125) == "2:05", "chapter timestamp format", factory.fmt_ts(125))
@@ -104,6 +109,46 @@ def test_srt():
 # --------------------------------------------------------------------------
 # Narration cache keys
 # --------------------------------------------------------------------------
+
+def test_frame_alignment():
+    """Regression: scene durations must land on whole frames, or captions and
+    chapters drift a few milliseconds per scene away from the encoded video."""
+    total_drift = 0.0
+    for raw in (18.22, 18.62, 21.48, 19.22, 20.42, 21.22, 22.65, 15.60, 25.37):
+        dur = round((raw + factory.SCENE_PAD) * factory.FPS) / factory.FPS
+        frames = round(dur * factory.FPS)
+        total_drift += abs(frames / factory.FPS - dur)
+    check(total_drift < 1e-9, "scene durations sit exactly on frame boundaries",
+          f"{total_drift*1000:.3f} ms drift")
+
+
+def test_variant_isolation():
+    """Regression: --preview --lang used to write 640x360 clips into the real
+    language cache, so the next full build would ship the draft."""
+    seen = {}
+    for preview in (False, True):
+        for lang in (None, "hi"):
+            variant = lang or "final"
+            if preview:
+                variant = "preview-" + variant
+            seen[(preview, lang)] = variant
+    check(len(set(seen.values())) == 4, "every build variant has its own clip dir",
+          ", ".join(sorted(set(seen.values()))))
+    check(seen[(True, "hi")] != seen[(False, "hi")],
+          "preview clips never share a directory with final clips")
+    check(seen[(False, None)] == "final" and seen[(False, "hi")] == "hi",
+          "existing final/lang cache keys are unchanged")
+
+
+def test_chapters():
+    scenes = [{"chapter": None}, {"chapter": "a"}, {"chapter": "b"}]
+    check(factory.count_chapters(scenes) == 3,
+          "an implicit 0:00 Intro is counted when scene 1 has no chapter",
+          str(factory.count_chapters(scenes)))
+    scenes = [{"chapter": "x"}, {"chapter": "y"}]
+    check(factory.count_chapters(scenes) == 2, "chapters counted without an Intro")
+    check(factory.count_chapters([{"chapter": None}]) == 0, "no chapters means zero")
+
 
 def test_tts_cache():
     a = factory.tts_key("hello", "en-US-AnaNeural", "-8%")
@@ -246,9 +291,20 @@ def test_toolkit_and_outros():
         check(callable(getattr(tk, prim, None)), f"toolkit exposes {prim}()")
     check(len(tk.RAINBOW) == 7, "rainbow palette has seven colors")
 
+    seeds, titles = {}, {}
     for slug in factory.list_projects():
         proj = os.path.join(ROOT, "projects", slug)
-        cfg = json.load(open(os.path.join(proj, "video.json"), encoding="utf-8"))
+        with open(os.path.join(proj, "video.json"), encoding="utf-8") as f:
+            cfg = json.load(f)
+        seed = cfg.get("music_seed", 7)
+        check(seed not in seeds, f"{slug}: music_seed {seed} is unique in the season",
+              f"clashes with {seeds.get(seed)}" if seed in seeds else "")
+        seeds[seed] = slug
+        check(cfg.get("title") not in titles, f"{slug}: title is unique")
+        titles[cfg.get("title")] = slug
+        check(bool(cfg.get("shorts_scenes")), f"{slug}: has shorts_scenes")
+        check(all(1 <= i <= len(cfg["scenes"]) for i in cfg.get("shorts_scenes", [])),
+              f"{slug}: shorts_scenes are in range")
         mod = load_render_scenes(proj)
         check(len(mod.SCENES) == len(cfg["scenes"]),
               f"{slug}: render_scenes matches video.json", f"{len(mod.SCENES)} scenes")
@@ -267,8 +323,9 @@ def test_toolkit_and_outros():
 def main():
     print("\nunit tests")
     print("-" * 60)
-    for fn in (test_concat_paths, test_srt, test_tts_cache, test_music,
-               test_qc, test_toolkit_and_outros):
+    for fn in (test_concat_paths, test_srt, test_frame_alignment,
+               test_variant_isolation, test_chapters, test_tts_cache,
+               test_music, test_qc, test_toolkit_and_outros):
         print(f"\n{fn.__name__}")
         fn()
     print("-" * 60)

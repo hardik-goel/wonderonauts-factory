@@ -37,6 +37,17 @@ def _finish(img: Image.Image, path: str, quality: int = 90) -> str:
     return path
 
 
+def _fit(d, text: str, size: int, max_w: float) -> int:
+    """Largest size <= `size` whose widest line fits in max_w."""
+    while size > 40:
+        f = tk.font(size, unicode_wide=any(ord(c) > 0x2FF for c in text))
+        bb = d.multiline_textbbox((0, 0), text, font=f)
+        if bb[2] - bb[0] <= max_w:
+            break
+        size = int(size * 0.94)
+    return size
+
+
 def _lines(text: str):
     return [ln for ln in (text or "WONDER\nO-NAUTS").split("\n") if ln.strip()]
 
@@ -68,10 +79,13 @@ def variant_a(text: str, sky: str = "day", prop: str = "rocket") -> Image.Image:
     lead, punch = lines[:-1], lines[-1].strip()
     tk.title_text(d, (900, 128), "WONDER-O-NAUTS", 76, fill=P["accent"], stroke=12)
     if lead:
-        tk.title_text(d, (900, 360), "\n".join(lead), 116, fill=P["white"], stroke=15)
+        lead_txt = "\n".join(lead)
+        tk.title_text(d, (900, 360), lead_txt, _fit(d, lead_txt, 116, 1560),
+                      fill=P["white"], stroke=15)
     # the last line is the hook -- it gets the size and the accent color
     tk.title_text(d, (900, 620), punch,
-                  230 if len(punch) <= 8 else 160, fill=P["accent"], stroke=22)
+                  _fit(d, punch, 230 if len(punch) <= 8 else 170, 1500),
+                  fill=P["accent"], stroke=22)
     _prop(d, prop, 1660, 760, 0.85)
     return tk.vignette(img, 0.20)
 
@@ -89,8 +103,10 @@ def variant_b(text: str, sky: str = "day", prop: str = "rocket") -> Image.Image:
 
     tk.kid(d, 470, 1070, scale=1.5, arms="up", mouth="o", looking="up")
     _prop(d, prop, 1660, 780, 1.05)
-    tk.title_text(d, (1080, 150), lead, 76, fill=P["white"], stroke=13)
-    tk.speech_pop(d, 1140, 420, punch, 170, fill=P["accent"], text_fill=P["text_dark"])
+    tk.title_text(d, (1080, 150), lead, _fit(d, lead, 76, 1180),
+                  fill=P["white"], stroke=13)
+    tk.speech_pop(d, 1140, 420, punch, _fit(d, punch, 170, 1080),
+                  fill=P["accent"], text_fill=P["text_dark"])
     return tk.vignette(img, 0.20)
 
 

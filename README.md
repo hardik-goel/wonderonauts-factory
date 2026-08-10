@@ -19,12 +19,13 @@ brew install ffmpeg                      # or: sudo apt install ffmpeg
 python3 factory.py --check               # preflight: deps, encoders, fonts
 ```
 
-Then build a sample episode -- three ship with the repo:
+Then build a sample episode -- four ship with the repo:
 
 ```bash
 python3 factory.py projects/why-is-the-sky-blue --shorts   # ep 1, light scattering
 python3 factory.py projects/how-do-planes-fly  --shorts   # ep 2, lift and thrust
 python3 factory.py projects/why-do-we-have-seasons --shorts  # ep 3, axial tilt
+python3 factory.py projects/where-does-rain-come-from --shorts  # ep 4, water cycle
 ```
 
 First run takes a few minutes (frames render, TTS downloads, ten clips encode).
@@ -145,7 +146,8 @@ of `factory.py`. Change them together, not one at a time.
 ```bash
 python3 plan_season.py add how-do-planes-fly     # scaffold + register as draft
 python3 plan_season.py set how-do-planes-fly ready
-python3 plan_season.py status                    # the dashboard
+python3 plan_season.py status                    # the plan
+python3 plan_season.py report                    # what is built: QC, runtime, files
 python3 factory.py --all --shorts                # builds only 'ready' episodes
 python3 plan_season.py set how-do-planes-fly published
 ```

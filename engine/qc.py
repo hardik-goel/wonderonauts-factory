@@ -40,12 +40,28 @@ def measure_loudness(path: str):
             float(peak.group(1)) if peak else None)
 
 
+def has_streams(path: str):
+    """(has_video, has_audio) -- a silent render is the one defect a human
+    reviewer is most likely to miss until it is already published."""
+    try:
+        p = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type",
+             "-of", "default=nw=1:nk=1", path],
+            capture_output=True, text=True, timeout=120)
+    except Exception:
+        return None, None
+    kinds = p.stdout.split()
+    return "video" in kinds, "audio" in kinds
+
+
 def _srt_cue_scenes(srt_path: str, scene_bounds):
     """How many scenes have at least one caption cue inside them."""
     if not os.path.exists(srt_path):
         return 0
+    with open(srt_path, encoding="utf-8") as f:
+        body = f.read()
     starts = []
-    for m in re.finditer(r"(\d\d):(\d\d):(\d\d),(\d\d\d) -->", open(srt_path, encoding="utf-8").read()):
+    for m in re.finditer(r"(\d\d):(\d\d):(\d\d),(\d\d\d) -->", body):
         h, mi, s, ms = (int(g) for g in m.groups())
         starts.append(h * 3600 + mi * 60 + s + ms / 1000.0)
     covered = 0
@@ -96,6 +112,12 @@ def build_report(ctx: dict) -> tuple[str, str]:
     if total > RUNTIME_MAX:
         warns.append(f"runtime {_fmt_ts(total)} is over {RUNTIME_MAX//60} min")
 
+    has_v, has_a = has_streams(ctx["video"])
+    if has_v is False:
+        warns.append("final video has no video stream")
+    if has_a is False:
+        warns.append("final video has NO AUDIO STREAM")
+
     mean_db, max_db = measure_loudness(ctx["video"])
     if mean_db is None:
         warns.append("could not measure loudness (ffmpeg volumedetect failed)")
@@ -119,6 +141,14 @@ def build_report(ctx: dict) -> tuple[str, str]:
     for p in thumbs:
         if os.path.getsize(p) > 2_000_000:
             warns.append(f"{os.path.basename(p)} exceeds YouTube's 2MB limit")
+        try:
+            from PIL import Image
+            with Image.open(p) as im:
+                if im.size != (1280, 720):
+                    warns.append(f"{os.path.basename(p)} is {im.size[0]}x{im.size[1]}, "
+                                 "not 1280x720")
+        except Exception:
+            warns.append(f"could not read {os.path.basename(p)}")
 
     if ctx.get("chapters", 0) and ctx["chapters"] < 3:
         warns.append("fewer than 3 chapters -- YouTube needs 3+ to show them")
@@ -140,6 +170,8 @@ def build_report(ctx: dict) -> tuple[str, str]:
              f"  ({os.path.getsize(ctx['video'])/1e6:.1f} MB)"
              if os.path.exists(ctx["video"]) else "video        MISSING")
     L.append(f"runtime      {_fmt_ts(total)}  ({total:.1f}s)")
+    L.append(f"streams      video={'yes' if has_v else 'NO'}  "
+             f"audio={'yes' if has_a else 'NO'}")
     if mean_db is not None:
         L.append(f"loudness     mean {mean_db:.1f} dB / peak {max_db:.1f} dB")
     L.append(f"captions     {covered}/{len(scenes)} scenes covered  "

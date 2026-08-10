@@ -1,0 +1,75 @@
+{
+  "title": "Where Does RAIN Come From? 🌧️ Science for Kids | Wonder-o-nauts",
+  "voice": "en-US-AnaNeural",
+  "rate": "+0%",
+  "description": "Where does rain actually come from? Join the Wonder-o-nauts on a journey with one single drop of water, from the sea, up into a cloud, and all the way back down again!\n\nIn this episode:\n☀️ The Sun lifts water off seas, lakes and puddles\n👻 Water turns invisible: that is evaporation\n🥶 High up it is freezing, so the water turns back into droplets\n☁️ A cloud is billions of tiny water droplets, not cotton and not steam\n💧 Droplets bump, join up and get heavy until they fall as rain\n🦕 Bonus: the water in your glass is billions of years old\n\nNo myths here. Clouds are not made of cotton wool or of steam. They are made of real liquid water droplets so tiny and light that the air can hold them up. Honest science for curious kids ages 4 to 9.\n\nWhat should we explore next? Tell us in the comments and we might make it our next mission!\n\n#kidsscience #wheredoesraincomefrom #watercycle #stemforkids #wonderonauts #scienceforkids",
+  "tags": "kids science, where does rain come from, water cycle for kids, science for kids, STEM for kids, evaporation, clouds for kids, educational video for children, wonder-o-nauts",
+  "thumbnail_text": "Where does rain\nCOME FROM?",
+  "thumbnail_prop": "molecule",
+  "music": true,
+  "music_seed": 26,
+  "bgm_vol": 0.13,
+  "shorts_scenes": [2, 6, 8],
+  "scenes": [
+    {
+      "image": "frames/scene_01.png",
+      "chapter": "Blast off!",
+      "sfx": "sparkle",
+      "narration": "Hello, Wonder-o-nauts! Today we are going on a journey with one tiny drop of water. It is going to fly up into the sky, live inside a cloud, and then fall all the way back down onto your head. Let's go!"
+    },
+    {
+      "image": "frames/scene_02.png",
+      "chapter": "The big question",
+      "sfx": "pop",
+      "narration": "When it rains, water pours out of the sky by the bucketload. But nobody is up there pouring it! So where was all that water hiding before it fell? And how did it get all the way up there in the first place?"
+    },
+    {
+      "image": "frames/scene_03.png",
+      "chapter": "The Sun lifts water",
+      "sfx": "whoosh",
+      "narration": "Here is secret number one. The Sun is a giant water lifter! It shines down on seas, lakes, rivers and even that puddle outside your house, and it warms the water until the tiniest bits start floating up into the air."
+    },
+    {
+      "image": "frames/scene_04.png",
+      "chapter": "Water goes invisible",
+      "sfx": "pop",
+      "narration": "The water does not vanish. It turns invisible! Each tiny piece of water floats up between the air molecules, far too small for your eyes to see. Scientists call this evaporation. It is why a wet puddle slowly disappears on a sunny day."
+    },
+    {
+      "image": "frames/scene_05.png",
+      "chapter": "Up high it is FREEZING",
+      "sfx": "whoosh",
+      "narration": "Now our invisible water floats higher and higher. And here is the thing about way up there. It is cold! Really cold. And when invisible water gets cold, it turns back into teeny tiny drops of liquid water again."
+    },
+    {
+      "image": "frames/scene_06.png",
+      "chapter": "A cloud is billions of drops",
+      "sfx": "sparkle",
+      "narration": "Squash billions and billions of those tiny droplets together, and guess what you have made? A cloud! Clouds are not cotton wool, and they are not smoke. A cloud is real water, in drops so light that the air can hold them up."
+    },
+    {
+      "image": "frames/scene_07.png",
+      "chapter": "Droplets join up",
+      "sfx": "pop",
+      "narration": "Inside the cloud, those droplets are bumping into each other all day long. And every time two droplets bump, they join together and make one bigger drop. Bump, join, bigger. Bump, join, bigger. Again and again and again!"
+    },
+    {
+      "image": "frames/scene_08.png",
+      "chapter": "Too heavy: RAIN!",
+      "sfx": "whoosh",
+      "narration": "Until finally a drop gets so big and so heavy that the air simply cannot hold it up any more. And down it comes, splash, onto the ground, onto the sea, onto your umbrella. That is rain!"
+    },
+    {
+      "image": "frames/scene_09.png",
+      "chapter": "Bonus: round and round",
+      "sfx": "whoosh",
+      "narration": "And here is the bonus wonder. That water does not stop. It flows into rivers, back to the sea, and the Sun lifts it up all over again, round and round forever. The water in your glass today is billions of years old. Dinosaurs drank it!"
+    },
+    {
+      "image": "frames/scene_10.png",
+      "chapter": "Mission complete!",
+      "sfx": "success",
+      "narration": "Wonderful work, Wonder-o-naut! Now you know the secret of rain. The Sun lifts water up, the cold turns it into droplets, droplets join into a cloud, and when they get too heavy, down they fall! If you loved this adventure, ask a grown-up to like and subscribe, and tell us... what should we explore next? See you soon!"
+    }
+  ]
+}

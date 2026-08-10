@@ -143,6 +143,45 @@ def main(argv):
     check(not os.path.exists(os.path.join(out, "preview.mp4")),
           "no preview artifact leaked into a full build")
 
+    man_project = man.get("project")
+    check(man_project == os.path.basename(proj),
+          "manifest records the project slug", str(man_project))
+
+    # Regression: --preview --lang used to drop 640x360 clips into the real
+    # language cache, so the next full build would silently ship the draft.
+    langs = cfg.get("languages") or {}
+    if langs:
+        code = sorted(langs)[0]
+        lang_audio = os.path.join(proj, "audio", code)
+        os.makedirs(lang_audio, exist_ok=True)
+        voice = langs[code].get("voice", factory.DEFAULT_VOICE)
+        rate = cfg.get("rate", factory.DEFAULT_RATE)
+        for i, s in enumerate(cfg["scenes"], 1):
+            text = s.get(f"narration_{code}") or s["narration"]
+            mp3 = os.path.join(lang_audio, f"scene_{i:02d}.mp3")
+            subprocess.run(
+                ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                 "-f", "lavfi", "-i", f"sine=frequency={300 + i * 30}:duration=3",
+                 "-af", "volume=0.22", "-ar", "44100", "-ac", "1",
+                 "-c:a", "libmp3lame", "-b:a", "128k", mp3], check=True)
+            with open(mp3 + ".stamp", "w", encoding="utf-8") as f:
+                f.write(factory.tts_key(text, voice, rate))
+        factory.build(proj, preview=True, lang=code)
+        check(os.path.isdir(os.path.join(proj, "clips", f"preview-{code}")),
+              f"--preview --lang {code} writes to its own clip dir")
+        check(not os.path.isdir(os.path.join(proj, "clips", code)),
+              f"--preview --lang {code} does NOT touch the real {code} clip cache")
+        check(os.path.exists(os.path.join(proj, "output", code, "preview.mp4")),
+              f"preview.mp4 written under output/{code}/")
+        lman = os.path.join(proj, "output", code, "preview_manifest.json")
+        check(os.path.exists(lman), "preview build writes a manifest too")
+        if os.path.exists(lman):
+            with open(lman, encoding="utf-8") as f:
+                lm = json.load(f)
+            check(lm["project"] == os.path.basename(proj) and lm["mode"] == "preview",
+                  "preview manifest records slug and mode",
+                  f'{lm["project"]}/{lm["mode"]}')
+
     if not keep:
         shutil.rmtree(SMOKE_DIR, ignore_errors=True)
 

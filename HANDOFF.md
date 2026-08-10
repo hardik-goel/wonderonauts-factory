@@ -25,7 +25,8 @@ New shapes go into `engine/toolkit.py`, never inline in an episode's
 like the same channel. Episode 1 contributed `sun`, `kid`, `rocket`, `molecule`,
 `zig_ray` and `prism`; episode 2 added `plane`, `paper_plane`, `airfoil`,
 `wind_streaks` and `force_arrow`; episode 3 added `planet`, `orbit_ring` and
-`light_beam`. Each reused everything else unchanged. Budget
+`light_beam`; episode 4 added `raindrop`, `rainfall`, `puddle` and
+`cycle_arrow`. Each reused everything else unchanged. Budget
 one or two new primitives per episode -- more than that usually means the
 episode is fighting the identity instead of extending it.
 
@@ -142,6 +143,29 @@ Folders whose name starts with `_` are ignored by `--check` and `--all`.
   rather than turning up `SFX_VOL`.
 
 ---
+
+## Audit trail: bugs found and fixed after the first build
+
+Each of these is now covered by a regression test in `tests/unit.py` or
+`tests/smoke.py`, because every one of them was invisible in the output until
+someone went looking.
+
+1. **`--preview --lang xx` poisoned the real language cache.** Preview clips
+   landed in `clips/<lang>/`, so the next full build saw them as up to date and
+   would have shipped a 640x360 draft. Clip directories are now keyed
+   `final` / `<lang>` / `preview-<lang>`.
+2. **SRT emitted 4-digit milliseconds.** A fraction of .9996 rounded to 1000 and
+   produced `00:00:01,1000`, which some players reject. Timestamps now round to
+   whole milliseconds before splitting into fields.
+3. **Captions drifted from the video.** Scene durations were raw floats while
+   clips are encoded as a whole number of frames, so captions and chapters
+   slipped a few milliseconds per scene. Durations are now quantized to frame
+   boundaries before anything else uses them.
+4. **`build_manifest.json` recorded `"project": "output"` for `--lang` builds.**
+   The slug was being derived from the output path. It is passed in explicitly
+   now.
+5. **The manifest and metadata never listed `qc_report.txt`**, because QC ran
+   after both were written. Order is now QC -> metadata -> manifest.
 
 ## Release checklist for the repo itself
 

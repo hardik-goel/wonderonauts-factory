@@ -86,6 +86,43 @@ def cmd_remove(a):
     return cmd_status(a)
 
 
+def cmd_report(a=None):
+    """What is actually built on disk right now, without rebuilding anything."""
+    data = load()
+    eps = data["episodes"] or [
+        {"slug": d, "status": "?"}
+        for d in sorted(os.listdir(os.path.join(HERE, "projects")))
+        if not d.startswith("_")]
+    print(f"\n  {data.get('season', 'Season')} -- build report")
+    print(f"  {'slug':<28} {'status':<10} {'QC':<6} {'runtime':>8}  built")
+    print("  " + "-" * 84)
+    for e in eps:
+        out = os.path.join(HERE, "projects", e["slug"], "output")
+        qc_path = os.path.join(out, "qc_report.txt")
+        man_path = os.path.join(out, "build_manifest.json")
+        verdict, runtime, built = "-", "-", "not built"
+        if os.path.exists(qc_path):
+            with open(qc_path, encoding="utf-8") as f:
+                head = f.read(400)
+            verdict = "PASS" if "QC PASS" in head else ("WARN" if "QC WARN" in head else "?")
+        if os.path.exists(man_path):
+            with open(man_path, encoding="utf-8") as f:
+                man = json.load(f)
+            secs = man.get("total_duration", 0)
+            runtime = f"{int(secs // 60)}:{int(secs % 60):02d}"
+            built = man.get("built_at", "?")[:16].replace("T", " ")
+        missing = [n for n in ("final.mp4", "captions.srt", "metadata.txt",
+                               "thumbnail_a.jpg", "thumbnail_b.jpg")
+                   if not os.path.exists(os.path.join(out, n))]
+        print(f"  {e['slug']:<28} {e.get('status', '?'):<10} {verdict:<6} "
+              f"{runtime:>8}  {built}"
+              + (f"   MISSING: {', '.join(missing)}" if missing else ""))
+    print("  " + "-" * 84)
+    print("  QC verdicts come from each episode's last build -- rebuild with "
+          "python3 factory.py --all\n")
+    return 0
+
+
 def cmd_status(a=None):
     data = load()
     eps = data["episodes"]
@@ -123,6 +160,8 @@ def main(argv=None) -> int:
     p.set_defaults(fn=cmd_remove)
 
     sub.add_parser("status", help="print the season table").set_defaults(fn=cmd_status)
+    sub.add_parser("report", help="what is built on disk: QC, runtime, artifacts"
+                   ).set_defaults(fn=cmd_report)
 
     a = ap.parse_args(argv)
     if not getattr(a, "fn", None):

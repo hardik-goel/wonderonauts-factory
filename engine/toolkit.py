@@ -855,6 +855,71 @@ def light_beam(d: ScaledDraw, start, end, n: int = 5, spacing: float = 74,
               color=col, width=width, head=arrow_head)
 
 
+def raindrop(d: ScaledDraw, x: int, y: int, size: float = 44, color=None,
+             shine: bool = True):
+    """Classic teardrop: round belly, pointed top."""
+    c = color or (108, 186, 244)
+    w = size * 0.72
+    d.ellipse([x - w, y - w * 0.86, x + w, y + w * 1.06], fill=c)
+    d.polygon([(x, y - size * 1.55), (x - w * 0.94, y + size * 0.08),
+               (x + w * 0.94, y + size * 0.08)], fill=c)
+    if shine and size >= 24:
+        d.ellipse([x - w * 0.52, y - w * 0.42, x - w * 0.12, y + w * 0.18],
+                  fill=(206, 236, 255))
+
+
+def rainfall(d: ScaledDraw, area, n: int = 40, seed: int = 7, size=(16, 30),
+             color=None, streaks: bool = True):
+    """Scatter of falling drops. Convenience wrapper over raindrop()."""
+    rnd = random.Random(seed)
+    x0, y0, x1, y1 = area
+    for _ in range(n):
+        x = rnd.uniform(x0, x1)
+        y = rnd.uniform(y0, y1)
+        sz = rnd.uniform(*size)
+        if streaks and rnd.random() < 0.45:
+            d.line([(x, y - sz * 2.6), (x, y - sz * 1.4)],
+                   fill=color or (150, 208, 250), width=max(3, int(sz * 0.22)))
+        raindrop(d, x, y, sz, color=color, shine=sz > 22)
+
+
+def puddle(d: ScaledDraw, x: int, y: int, w: float = 300, h: float = 70,
+           color=None, shine: bool = True):
+    """Shallow pool of water, seen from a low angle."""
+    c = color or (92, 170, 232)
+    d.ellipse([x - w, y - h, x + w, y + h], fill=c)
+    d.ellipse([x - w * 0.94, y - h * 0.9, x + w * 0.94, y + h * 0.62],
+              fill=(120, 194, 246))
+    if shine:
+        d.ellipse([x - w * 0.52, y - h * 0.42, x - w * 0.06, y - h * 0.06],
+                  fill=(206, 236, 255))
+
+
+def cycle_arrow(d: ScaledDraw, cx: int, cy: int, rx: float, ry: float,
+                start_deg: float, end_deg: float, color=None, width: int = 14,
+                head: float = 46, dashed: bool = False):
+    """Curved arrow following an ellipse -- the water cycle's connective tissue."""
+    col = color or PALETTE["white"]
+    steps = max(12, int(abs(end_deg - start_deg) / 3))
+    pts = []
+    for i in range(steps + 1):
+        t = start_deg + (end_deg - start_deg) * i / steps
+        a = math.radians(t)
+        pts.append((cx + math.cos(a) * rx, cy + math.sin(a) * ry))
+    if dashed:
+        for i in range(0, len(pts) - 1, 2):
+            d.line([pts[i], pts[i + 1]], fill=col, width=width)
+    else:
+        d.line(pts, fill=col, width=width, joint="curve")
+    # head aligned with the tangent at the end of the arc
+    (px, py), (qx, qy) = pts[-2], pts[-1]
+    a = math.atan2(qy - py, qx - px)
+    d.polygon([(qx, qy),
+               (qx - math.cos(a - 0.42) * head, qy - math.sin(a - 0.42) * head),
+               (qx - math.cos(a + 0.42) * head, qy - math.sin(a + 0.42) * head)],
+              fill=col)
+
+
 def prism(d: ScaledDraw, x: int, y: int, size: float = 260, color=None):
     """Glass triangle used for the rainbow-splitting demo."""
     c = color or PALETTE["prism_glass"]
@@ -938,12 +1003,20 @@ def title_text(d: ScaledDraw, xy, text: str, size: int = 96, fill=None,
 def caption(d: ScaledDraw, text: str, size: int = 58, y: int = 950,
             bg=None, fg=None, pad: int = 30, width_frac: float = 0.86):
     """Bottom banner caption strip (burned-in, kept out of the end-screen zone)."""
-    f = font(size, unicode_wide=any(ord(ch) > 0x2FF for ch in text))
+    wide = any(ord(ch) > 0x2FF for ch in text)
+    # shrink rather than overflow: a caption wider than the banner used to run
+    # off both ends of the pill
+    f = font(size, unicode_wide=wide)
     bb = d.textbbox((0, 0), text, font=f)
+    while bb[2] - bb[0] + pad * 3 > W * width_frac and size > 24:
+        size = int(size * 0.94)
+        f = font(size, unicode_wide=wide)
+        bb = d.textbbox((0, 0), text, font=f)
     w = min(bb[2] - bb[0] + pad * 3, W * width_frac)
     h = (bb[3] - bb[1]) + pad * 1.6
     d.rounded_rectangle([W / 2 - w / 2, y - h / 2, W / 2 + w / 2, y + h / 2],
                         radius=h * 0.5, fill=bg or PALETTE["banner"])
+    register_box("caption", (W / 2 - w / 2, y - h / 2, W / 2 + w / 2, y + h / 2))
     title_text(d, (W / 2, y), text, size, fill=fg or PALETTE["white"], stroke=0)
 
 

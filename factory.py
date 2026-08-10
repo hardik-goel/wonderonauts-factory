@@ -123,10 +123,13 @@ def fmt_ts(sec: float) -> str:
 
 
 def srt_ts(sec: float) -> str:
-    sec = max(0.0, sec)
-    h, rem = divmod(sec, 3600)
-    m, s = divmod(rem, 60)
-    return f"{int(h):02d}:{int(m):02d}:{int(s):02d},{int(round((s - int(s)) * 1000)):03d}"
+    """SRT timestamp. Rounds to whole milliseconds first, so a fraction of
+    .9996 becomes the next second rather than a malformed ',1000'."""
+    ms = max(0, int(round(max(0.0, sec) * 1000)))
+    h, ms = divmod(ms, 3600_000)
+    m, ms = divmod(ms, 60_000)
+    sec_i, ms = divmod(ms, 1000)
+    return f"{h:02d}:{m:02d}:{sec_i:02d},{ms:03d}"
 
 
 # ==========================================================================
@@ -386,6 +389,12 @@ def make_srt(scenes, path: str) -> int:
     return len(cues)
 
 
+def count_chapters(scenes) -> int:
+    """Chapters YouTube will show, including the implicit 0:00 Intro."""
+    n = sum(1 for s in scenes if s.get("chapter"))
+    return n + 1 if n and not scenes[0].get("chapter") else n
+
+
 def make_metadata(path: str, cfg: dict, scenes, total: float, lang: str | None,
                   artifacts: dict) -> int:
     """Title / description / tags / chapters / upload checklist in one file."""
@@ -455,11 +464,13 @@ def make_metadata(path: str, cfg: dict, scenes, total: float, lang: str | None,
 
 
 def write_manifest(path: str, cfg: dict, scenes, opts, artifacts: dict,
-                   total: float, lang: str | None):
+                   total: float, lang: str | None, project: str,
+                   preview: bool = False):
     man = {
         "factory_version": VERSION,
         "built_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "project": os.path.basename(os.path.dirname(os.path.dirname(path))),
+        "project": project,
+        "mode": "preview" if preview else "full",
         "title": cfg.get("title"),
         "language": lang or "en",
         "voice": opts["voice"],
@@ -516,8 +527,14 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
     print(f"\n== {name}{tag} ==")
     print(f"  voice {voice} @ {rate}")
 
+    # Preview clips must never share a directory with real ones: a 640x360
+    # draft sitting in the final cache would be silently shipped on the next
+    # build. The key keeps "final"/"<lang>" stable so existing caches survive.
+    variant = lang or "final"
+    if preview:
+        variant = "preview-" + variant
     audio_dir = os.path.join(proj, "audio", lang) if lang else os.path.join(proj, "audio")
-    clip_dir = os.path.join(proj, "clips", lang or ("preview" if preview else "final"))
+    clip_dir = os.path.join(proj, "clips", variant)
     out_dir = os.path.join(proj, "output", lang) if lang else os.path.join(proj, "output")
     work = os.path.join(proj, "clips", "_work")
     for d in (audio_dir, clip_dir, out_dir, work):
@@ -537,7 +554,10 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
         if narrate(text, voice, rate, mp3, force=force):
             n_tts += 1
             print(f"  tts   scene {i:02d}")
-        dur = ffprobe_duration(mp3) + SCENE_PAD
+        # quantize to a whole frame: the clip is encoded as exactly this many
+        # frames, so captions and chapters line up with the video instead of
+        # drifting a few milliseconds per scene
+        dur = round((ffprobe_duration(mp3) + SCENE_PAD) * FPS) / FPS
         sfx_name = s.get("sfx", "whoosh")
         if sfx_name not in VALID_SFX:
             raise BuildError(f"scene {i}: unknown sfx {sfx_name!r} (use {VALID_SFX})")
@@ -577,8 +597,8 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
           f"({jobs} parallel)")
 
     # ---- concat ---------------------------------------------------------
-    joined = os.path.join(work, f"joined_{lang or ('preview' if preview else 'final')}.mp4")
-    concat_clips(clips, joined, work, name=f"list_{lang or ('preview' if preview else 'final')}")
+    joined = os.path.join(work, f"joined_{variant}.mp4")
+    concat_clips(clips, joined, work, name=f"list_{variant}")
     total = ffprobe_duration(joined)
 
     artifacts: dict = {}
@@ -590,6 +610,10 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
         srt = os.path.join(out_dir, "preview_captions.srt")
         make_srt(scenes, srt)
         artifacts["captions"] = srt
+        man = os.path.join(out_dir, "preview_manifest.json")
+        write_manifest(man, cfg, scenes, opts, artifacts, total, lang, name,
+                       preview=True)
+        artifacts["manifest"] = man
         print(f"  DONE  preview {fmt_ts(total)} -> {os.path.relpath(final, proj)}")
         return {"total": total, "artifacts": artifacts, "verdict": "PREVIEW",
                 "project": proj, "scenes": scenes}
@@ -655,16 +679,11 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
     artifacts["thumbnail_a"] = ta
     artifacts["thumbnail_b"] = tb
 
-    # ---- metadata + manifest + QC ---------------------------------------
-    meta = os.path.join(out_dir, "metadata.txt")
-    n_chapters = make_metadata(meta, cfg, scenes, total, lang, artifacts)
-    artifacts["metadata"] = meta
-
-    manifest = os.path.join(out_dir, "build_manifest.json")
-    write_manifest(manifest, cfg, scenes, opts, artifacts, total, lang)
-    artifacts["manifest"] = manifest
-
+    # ---- QC, then metadata, then manifest ------------------------------
+    # QC first so metadata and the manifest can both list qc_report.txt; the
+    # manifest last so it records every artifact the build produced.
     from engine import qc
+    n_chapters = count_chapters(scenes)
     qc_path = os.path.join(out_dir, "qc_report.txt")
     qc_title = cfg.get("title")
     if lang:
@@ -675,6 +694,14 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
         "thumbnails": [ta, tb], "chapters": n_chapters, "short": short_path,
     }, qc_path)
     artifacts["qc"] = qc_path
+
+    meta = os.path.join(out_dir, "metadata.txt")
+    make_metadata(meta, cfg, scenes, total, lang, artifacts)
+    artifacts["metadata"] = meta
+
+    manifest = os.path.join(out_dir, "build_manifest.json")
+    write_manifest(manifest, cfg, scenes, opts, artifacts, total, lang, name)
+    artifacts["manifest"] = manifest
 
     print(f"  meta  {n_cues} caption cues, {n_chapters} chapters")
     print(f"  DONE  {fmt_ts(total)}  QC {verdict}  -> {os.path.relpath(out_dir, proj)}/")
@@ -713,6 +740,7 @@ def preflight() -> int:
                              capture_output=True, text=True).stdout
         line("libx264" in enc, "libx264", "H.264 encoder")
         line(" aac " in enc, "aac", "AAC encoder")
+        line("libmp3lame" in enc, "libmp3lame", "needed by tests/smoke.py")
     try:
         from engine import toolkit as tk
         fp = tk.font_path()
