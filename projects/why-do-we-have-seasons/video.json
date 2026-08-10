@@ -1,0 +1,75 @@
+{
+  "title": "Why Do We Have SEASONS? 🌍 Science for Kids | Wonder-o-nauts",
+  "voice": "en-US-AnaNeural",
+  "rate": "+0%",
+  "description": "Why is it hot in summer and freezing in winter? It is NOT because Earth moves closer to the Sun. Blast off with the Wonder-o-nauts and discover the real reason: our planet leans!\n\nIn this episode:\n🌍 Earth spins on a tilted axis, and the tilt always points the same way\n🔦 Straight-down sunlight is concentrated, slanted sunlight is spread out\n☀️ Summer is when your half of Earth leans toward the Sun\n❄️ Winter is when your half leans away\n🌏 Two halves of the world have opposite seasons at the same moment\n🧊 Bonus: at the poles the Sun can stay up all day, or never rise at all\n\nNo myths here. Earth is actually a tiny bit closer to the Sun in January, right in the middle of the northern winter. Distance is not the answer. The lean is. Real science for curious kids ages 4 to 9.\n\nWhat should we explore next? Tell us in the comments and we might make it our next mission!\n\n#kidsscience #whydowehaveseasons #stemforkids #wonderonauts #scienceforkids",
+  "tags": "kids science, why do we have seasons, seasons for kids, science for kids, STEM for kids, earth tilt, summer and winter, educational video for children, wonder-o-nauts",
+  "thumbnail_text": "Why do we have\nSEASONS?",
+  "thumbnail_prop": "sun",
+  "music": true,
+  "music_seed": 34,
+  "bgm_vol": 0.13,
+  "shorts_scenes": [3, 5, 8],
+  "scenes": [
+    {
+      "image": "frames/scene_01.png",
+      "chapter": "Blast off!",
+      "sfx": "sparkle",
+      "narration": "Hello, Wonder-o-nauts! Today we are flying all the way out into space, to look down at our whole planet, and solve a puzzle you feel every single year. Why is it hot in summer, and freezing in winter? Let's go!"
+    },
+    {
+      "image": "frames/scene_02.png",
+      "chapter": "The big question",
+      "sfx": "pop",
+      "narration": "Think about your favourite summer day: warm sunshine, ice cream, and long bright evenings outside. Now think about winter, when the wind is freezing and it is already dark before dinner time. Same planet, same you, same Sun. So what on Earth changed?"
+    },
+    {
+      "image": "frames/scene_03.png",
+      "chapter": "Not the distance!",
+      "sfx": "whoosh",
+      "narration": "Lots of people guess that summer is when Earth moves closer to the Sun. It sounds sensible... but it is not true! Here is the surprise. Earth is actually a tiny bit closer to the Sun in January, right in the middle of a freezing northern winter!"
+    },
+    {
+      "image": "frames/scene_04.png",
+      "chapter": "Earth leans over",
+      "sfx": "whoosh",
+      "narration": "Here is the real secret. Earth does not sit up straight. It leans! Our planet spins on a tilted axis, leaning over by about twenty three degrees. And here is the clever part. That lean always points the same way, all year long."
+    },
+    {
+      "image": "frames/scene_05.png",
+      "chapter": "Straight vs slanted light",
+      "sfx": "pop",
+      "narration": "Why does leaning matter so much? Try this with a torch. Shine it straight down and you get a small, bright, blazing circle. Now tilt it. The very same light smears out over a much bigger patch, so every bit of it is weaker."
+    },
+    {
+      "image": "frames/scene_06.png",
+      "chapter": "Summer: leaning in",
+      "sfx": "whoosh",
+      "narration": "So when your half of Earth is leaning toward the Sun, the sunlight comes down steep and concentrated, like that bright little circle. The days are long, the ground soaks up heat for hours, and that is summer!"
+    },
+    {
+      "image": "frames/scene_07.png",
+      "chapter": "Winter: leaning away",
+      "sfx": "whoosh",
+      "narration": "Six months later, Earth is on the other side of its orbit. Now your half leans away from the Sun. The same sunlight arrives slanted and spread out, the days are short, and everything cools down. That is winter!"
+    },
+    {
+      "image": "frames/scene_08.png",
+      "chapter": "Two seasons at once",
+      "sfx": "sparkle",
+      "narration": "And here is a wonderful thing. Because Earth leans, the top half and the bottom half never agree! When children in Canada are building snowmen, children in Australia are swimming at the beach. Two seasons, on one planet, at the very same moment."
+    },
+    {
+      "image": "frames/scene_09.png",
+      "chapter": "Bonus: the poles",
+      "sfx": "whoosh",
+      "narration": "Bonus wonder! At the very top and bottom of our leaning planet, things get extreme. In summer the Sun can stay up all night long, and it never gets dark. And in winter it can stay dark, all day. Imagine that!"
+    },
+    {
+      "image": "frames/scene_10.png",
+      "chapter": "Mission complete!",
+      "sfx": "success",
+      "narration": "Fantastic work, Wonder-o-naut! Now you know the truth. Seasons are not about getting closer to the Sun. They happen because our planet leans, so sunlight lands straight on, or spread out! If you loved this adventure, ask a grown-up to like and subscribe, and tell us... what should we explore next? See you soon!"
+    }
+  ]
+}

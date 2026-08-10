@@ -770,6 +770,91 @@ def force_arrow(d: ScaledDraw, p1, p2, label: str, color=None, width: int = 16,
                pad=22)
 
 
+def planet(d: ScaledDraw, x: int, y: int, r: float = 200, tilt: float = 23.5,
+           axis: bool = True, land: bool = True, night: str | None = None,
+           seed: int = 3, ocean=None, land_color=None, face: bool = False):
+    """Tilted Earth. `night` shades the half facing away: 'left' or 'right'.
+
+    tilt is the axial tilt in degrees -- the whole reason seasons exist, so it
+    is a first-class parameter rather than a decoration.
+    """
+    oc = ocean or (74, 148, 216)
+    lc = land_color or (108, 196, 108)
+    d.ellipse([x - r, y - r, x + r, y + r], fill=oc)
+
+    if land:      # deterministic continent blobs, not a map -- just readable land
+        rnd = random.Random(seed)
+        for _ in range(7):
+            a = rnd.uniform(0, 2 * math.pi)
+            dist = rnd.uniform(0.1, 0.62) * r
+            bx, by = x + math.cos(a) * dist, y + math.sin(a) * dist
+            bw, bh = rnd.uniform(0.22, 0.40) * r, rnd.uniform(0.16, 0.30) * r
+            d.ellipse([bx - bw, by - bh, bx + bw, by + bh], fill=lc)
+            d.ellipse([bx - bw * 0.5, by - bh * 1.3, bx + bw * 0.9, by + bh * 0.5],
+                      fill=lc)
+
+    a = math.radians(tilt)
+    # ice caps sit on the tilted poles, which is what makes the tilt legible
+    for sgn in (-1, 1):
+        px = x + math.sin(a) * r * 0.82 * sgn
+        py = y - math.cos(a) * r * 0.82 * sgn
+        cap = r * 0.3
+        d.ellipse([px - cap, py - cap * 0.72, px + cap, py + cap * 0.72],
+                  fill=(238, 246, 255))
+
+    if night in ("left", "right"):
+        start, end = (90, 270) if night == "left" else (270, 90)
+        d.pieslice([x - r, y - r, x + r, y + r], start, end, fill=(28, 42, 92))
+        d.pieslice([x - r * 0.99, y - r * 0.99, x + r * 0.99, y + r * 0.99],
+                   start, end, fill=(38, 56, 112))
+
+    if axis:
+        ax = math.sin(a) * r * 1.28
+        ay = math.cos(a) * r * 1.28
+        d.line([(x - ax, y + ay), (x + ax, y - ay)], fill=PALETTE["ink"], width=8)
+        for sgn in (-1, 1):
+            tipx, tipy = x + ax * sgn, y - ay * sgn
+            d.ellipse([tipx - 12, tipy - 12, tipx + 12, tipy + 12], fill=PALETTE["ink"])
+
+    if face:
+        for sx in (-0.28, 0.28):
+            d.ellipse([x + r * sx - r * 0.07, y - r * 0.14,
+                       x + r * sx + r * 0.07, y - r * 0.02], fill=PALETTE["ink"])
+        d.chord([x - r * 0.3, y - r * 0.02, x + r * 0.3, y + r * 0.34],
+                20, 160, fill=PALETTE["ink"])
+    register_box("planet", (x - r * 1.3, y - r * 1.3, x + r * 1.3, y + r * 1.3))
+
+
+def orbit_ring(d: ScaledDraw, cx: int, cy: int, rx: float, ry: float,
+               color=None, width: int = 7, dashes: int = 56):
+    """Dashed orbit path. Nearly circular, because Earth's orbit nearly is."""
+    col = color or (255, 255, 255)
+    for i in range(dashes):
+        a0 = 2 * math.pi * i / dashes
+        a1 = a0 + math.pi / dashes
+        d.line([(cx + math.cos(a0) * rx, cy + math.sin(a0) * ry),
+                (cx + math.cos(a1) * rx, cy + math.sin(a1) * ry)],
+               fill=col, width=width)
+
+
+def light_beam(d: ScaledDraw, start, end, n: int = 5, spacing: float = 74,
+               color=None, width: int = 11, arrow_head: float = 30):
+    """n parallel light rays, all pointing start -> end.
+
+    Slant the pair and the same rays cover more ground: that is the entire
+    seasons explanation in one primitive.
+    """
+    col = color or PALETTE["accent"]
+    (x1, y1), (x2, y2) = start, end
+    dx, dy = x2 - x1, y2 - y1
+    L = math.hypot(dx, dy) or 1.0
+    nx, ny = -dy / L, dx / L          # unit normal to the beam
+    for i in range(n):
+        off = (i - (n - 1) / 2.0) * spacing
+        arrow(d, (x1 + nx * off, y1 + ny * off), (x2 + nx * off, y2 + ny * off),
+              color=col, width=width, head=arrow_head)
+
+
 def prism(d: ScaledDraw, x: int, y: int, size: float = 260, color=None):
     """Glass triangle used for the rainbow-splitting demo."""
     c = color or PALETTE["prism_glass"]

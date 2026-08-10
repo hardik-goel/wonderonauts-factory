@@ -24,7 +24,8 @@ New shapes go into `engine/toolkit.py`, never inline in an episode's
 `render_scenes.py`. Episodes compose primitives; that is why every episode looks
 like the same channel. Episode 1 contributed `sun`, `kid`, `rocket`, `molecule`,
 `zig_ray` and `prism`; episode 2 added `plane`, `paper_plane`, `airfoil`,
-`wind_streaks` and `force_arrow`, and reused everything else unchanged. Budget
+`wind_streaks` and `force_arrow`; episode 3 added `planet`, `orbit_ring` and
+`light_beam`. Each reused everything else unchanged. Budget
 one or two new primitives per episode -- more than that usually means the
 episode is fighting the identity instead of extending it.
 

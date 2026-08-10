@@ -19,11 +19,12 @@ brew install ffmpeg                      # or: sudo apt install ffmpeg
 python3 factory.py --check               # preflight: deps, encoders, fonts
 ```
 
-Then build a sample episode -- two ship with the repo:
+Then build a sample episode -- three ship with the repo:
 
 ```bash
 python3 factory.py projects/why-is-the-sky-blue --shorts   # ep 1, light scattering
 python3 factory.py projects/how-do-planes-fly  --shorts   # ep 2, lift and thrust
+python3 factory.py projects/why-do-we-have-seasons --shorts  # ep 3, axial tilt
 ```
 
 First run takes a few minutes (frames render, TTS downloads, ten clips encode).
