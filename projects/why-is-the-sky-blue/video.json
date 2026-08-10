@@ -1,0 +1,92 @@
+{
+  "title": "Why Is the Sky BLUE? 🌈 Light Science for Kids | Wonder-o-nauts",
+  "voice": "en-US-AnaNeural",
+  "rate": "+0%",
+  "description": "Why IS the sky blue? Climb aboard the rocket of curiosity with the Wonder-o-nauts and discover the colorful secret hiding inside sunlight!\n\nIn this episode:\n☀️ Sunlight looks white, but it is a hidden rainbow\n🔺 The prism proof: how all seven colors split apart\n💨 The air is packed with trillions of tiny molecules\n💙 Scattering: why blue light bounces everywhere at once\n🌅 Bonus wonder: why sunsets glow red and orange\n\nA calm, colorful science adventure for curious kids ages 4 to 9. Every picture is drawn just for this channel, and every question gets a real scientific answer kids can actually understand.\n\nWhat should we explore next? Tell us in the comments and we might make it our next mission!\n\n#kidsscience #whyistheskyblue #stemforkids #wonderonauts #scienceforkids",
+  "tags": "kids science, why is the sky blue, science for kids, STEM for kids, light for kids, rainbow science, educational video for children, wonder-o-nauts",
+  "thumbnail_text": "Why is the sky\nBLUE?",
+  "music": true,
+  "music_seed": 7,
+  "bgm_vol": 0.13,
+  "shorts_scenes": [2, 6, 8],
+  "languages": {
+    "hi": {
+      "voice": "hi-IN-SwaraNeural",
+      "title": "आसमान नीला क्यों है? 🌈 बच्चों के लिए रोशनी का विज्ञान | Wonder-o-nauts",
+      "description": "आसमान नीला क्यों दिखता है? Wonder-o-nauts के रॉकेट में बैठिए और सूरज की रोशनी में छिपा रंगीन राज़ जानिए!\n\nइस एपिसोड में:\n☀️ सफ़ेद रोशनी असल में एक छिपा हुआ इंद्रधनुष है\n🔺 प्रिज़्म का सबूत: सातों रंग अलग-अलग हो जाते हैं\n💨 हवा में खरबों नन्हे मॉलिक्यूल भरे हैं\n💙 स्कैटरिंग: नीली रोशनी हर तरफ़ क्यों उछलती है\n🌅 बोनस: शाम को आसमान लाल-नारंगी क्यों हो जाता है\n\n4 से 9 साल के जिज्ञासु बच्चों के लिए एक शांत और रंगीन विज्ञान यात्रा।\n\n#kidsscience #whyistheskyblue #stemforkids #wonderonauts #scienceforkids",
+      "tags": "बच्चों का विज्ञान, आसमान नीला क्यों है, science for kids hindi, बच्चों के लिए विज्ञान, wonder-o-nauts"
+    }
+  },
+  "scenes": [
+    {
+      "image": "frames/scene_01.png",
+      "chapter": "Blast off!",
+      "sfx": "sparkle",
+      "narration": "Hello, Wonder-o-nauts! Welcome aboard our rocket of curiosity! Today we are going on a super colorful adventure, to answer one of the biggest questions ever. Why is the sky... blue? Buckle up, let's go!",
+      "narration_hi": "नमस्ते, वंडर-ओ-नॉट्स! हमारे जिज्ञासा वाले रॉकेट में आपका स्वागत है! आज हम एक बहुत ही रंगीन यात्रा पर जा रहे हैं, और एक बहुत बड़े सवाल का जवाब ढूँढेंगे। आसमान नीला क्यों है? तैयार हो जाइए, चलिए चलते हैं!"
+    },
+    {
+      "image": "frames/scene_02.png",
+      "chapter": "The big question",
+      "sfx": "pop",
+      "narration": "Have you ever looked up on a sunny day and wondered... why is the sky blue? Why not pink? Or green? Or purple with orange dots? It seems like a simple question. But the answer is hiding inside sunlight itself!",
+      "narration_hi": "क्या आपने कभी धूप वाले दिन ऊपर देखकर सोचा है, कि आसमान नीला क्यों है? गुलाबी क्यों नहीं? या हरा? या नारंगी बिंदुओं वाला बैंगनी? सवाल आसान लगता है। लेकिन जवाब सूरज की रोशनी के अंदर ही छिपा है!"
+    },
+    {
+      "image": "frames/scene_03.png",
+      "chapter": "Sunlight's hidden rainbow",
+      "sfx": "whoosh",
+      "narration": "Here is secret number one. Sunlight looks white... but it is actually a rainbow in disguise! White light is made of every color mixed together. Red, orange, yellow, green, blue, indigo and violet, all travelling together from the sun, all the way to Earth.",
+      "narration_hi": "यह रहा पहला राज़। सूरज की रोशनी सफ़ेद दिखती है, लेकिन असल में यह एक छिपा हुआ इंद्रधनुष है! सफ़ेद रोशनी हर रंग के मिलने से बनती है। लाल, नारंगी, पीला, हरा, नीला, जामुनी और बैंगनी, सब साथ-साथ सूरज से चलकर धरती तक आते हैं।"
+    },
+    {
+      "image": "frames/scene_04.png",
+      "chapter": "The prism proof",
+      "sfx": "whoosh",
+      "narration": "Don't believe it? Here's the proof! When light passes through a glass shape called a prism, it splits apart into all seven colors. Raindrops can do the same trick. And that, Wonder-o-nauts, is exactly how rainbows are made!",
+      "narration_hi": "यकीन नहीं होता? यह रहा सबूत! जब रोशनी काँच के एक टुकड़े से गुज़रती है, जिसे प्रिज़्म कहते हैं, तो वह सातों रंगों में बँट जाती है। बारिश की बूँदें भी यही जादू करती हैं। और वंडर-ओ-नॉट्स, इंद्रधनुष ऐसे ही बनता है!"
+    },
+    {
+      "image": "frames/scene_05.png",
+      "chapter": "Tiny air molecules",
+      "sfx": "whoosh",
+      "narration": "Now for secret number two. The air above us is not empty! It is packed with trillions and trillions of teeny tiny molecules. They are way too small for our eyes to see. But sunlight has to zoom past every single one of them on its way down to us.",
+      "narration_hi": "अब दूसरा राज़। हमारे ऊपर की हवा खाली नहीं है! उसमें खरबों-खरब नन्हे-नन्हे मॉलिक्यूल भरे हैं। वे इतने छोटे हैं कि हमारी आँखें उन्हें देख ही नहीं सकतीं। लेकिन सूरज की रोशनी को हम तक पहुँचने के लिए हर एक के पास से गुज़रना पड़ता है।"
+    },
+    {
+      "image": "frames/scene_06.png",
+      "chapter": "Blue light bounces!",
+      "sfx": "pop",
+      "narration": "And here comes the magic part! When sunlight bumps into those tiny air molecules, the blue light gets bounced around, again and again and again! Scientists call this scattering. Blue light goes boing, boing, boing, in every direction, all across the sky!",
+      "narration_hi": "और अब आता है जादू वाला हिस्सा! जब सूरज की रोशनी उन नन्हे मॉलिक्यूल से टकराती है, तो नीली रोशनी बार-बार उछलने लगती है! वैज्ञानिक इसे स्कैटरिंग कहते हैं। नीली रोशनी बोइंग, बोइंग, बोइंग करके पूरे आसमान में हर दिशा में फैल जाती है!"
+    },
+    {
+      "image": "frames/scene_07.png",
+      "chapter": "Why only blue?",
+      "sfx": "whoosh",
+      "narration": "But wait, why only blue? Well, blue light travels in short, wiggly little waves, so it bumps into molecules all the time. Red and orange light travel in long, lazy waves, so they mostly zoom straight past without bouncing. Blue bounces. Red rushes through!",
+      "narration_hi": "पर रुकिए, सिर्फ़ नीली ही क्यों? दरअसल नीली रोशनी छोटी-छोटी लहरों में चलती है, इसलिए वह बार-बार मॉलिक्यूल से टकराती है। लाल और नारंगी रोशनी लंबी, सुस्त लहरों में चलती है, इसलिए वह ज़्यादातर सीधे निकल जाती है। नीली उछलती है, लाल सीधी निकल जाती है!"
+    },
+    {
+      "image": "frames/scene_08.png",
+      "chapter": "The sky glows blue",
+      "sfx": "sparkle",
+      "narration": "So when you look up at the sky, blue light is raining down on you from every single direction! That is why the whole sky glows blue, from one side to the other. Mystery... solved!",
+      "narration_hi": "तो जब आप आसमान की तरफ़ देखते हैं, नीली रोशनी हर दिशा से आप पर बरसती है! इसीलिए पूरा आसमान एक छोर से दूसरे छोर तक नीला चमकता है। पहेली हल हो गई!"
+    },
+    {
+      "image": "frames/scene_09.png",
+      "chapter": "Bonus: sunset magic",
+      "sfx": "whoosh",
+      "narration": "But here's a bonus wonder! At sunset, sunlight has to travel a much, much longer path through the air. On that long journey, almost all the blue light gets scattered away before it reaches you. Only the reds and oranges survive the trip. And that is why sunsets look like fire in the sky!",
+      "narration_hi": "पर एक बोनस कमाल भी है! शाम को सूरज की रोशनी को हवा में बहुत-बहुत लंबा रास्ता तय करना पड़ता है। इतने लंबे सफ़र में लगभग सारी नीली रोशनी पहले ही बिखर जाती है। सिर्फ़ लाल और नारंगी रंग ही बचकर हम तक पहुँचते हैं। इसीलिए शाम का आसमान आग जैसा दिखता है!"
+    },
+    {
+      "image": "frames/scene_10.png",
+      "chapter": "Mission complete!",
+      "sfx": "success",
+      "narration": "Amazing job, Wonder-o-naut! Now you know the sky's biggest secret. Sunlight is a hidden rainbow, and tiny air molecules bounce the blue light everywhere! If you loved this adventure, ask a grown-up to like and subscribe, and tell us in the comments... what should we explore next? See you soon!",
+      "narration_hi": "शाबाश, वंडर-ओ-नॉट! अब आप आसमान का सबसे बड़ा राज़ जानते हैं। सूरज की रोशनी एक छिपा हुआ इंद्रधनुष है, और नन्हे मॉलिक्यूल नीली रोशनी को हर तरफ़ उछाल देते हैं! अगर आपको यह यात्रा पसंद आई, तो किसी बड़े से कहिए कि लाइक और सब्सक्राइब करें, और कमेंट में बताइए, अगली बार हम क्या खोजें? जल्दी मिलते हैं!"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "season": "Season 1",
+  "episodes": [
+    {
+      "slug": "why-is-the-sky-blue",
+      "title": "Why Is the Sky BLUE? 🌈 Light Science for Kids | Wonder-o-nauts",
+      "status": "ready"
+    },
+    {
+      "slug": "how-do-planes-fly",
+      "title": "How Do Planes FLY? ✈️ Science for Kids | Wonder-o-nauts",
+      "status": "ready"
+    }
+  ]
+}

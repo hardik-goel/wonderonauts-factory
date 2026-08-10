@@ -1,0 +1,75 @@
+{
+  "title": "How Do Planes FLY? ✈️ Science for Kids | Wonder-o-nauts",
+  "voice": "en-US-AnaNeural",
+  "rate": "+0%",
+  "description": "How does something as heavy as a plane stay up in the sky? Climb aboard with the Wonder-o-nauts and find out what wings are really doing up there!\n\nIn this episode:\n💨 Air is real stuff, even though we cannot see it\n✈️ Wings push air DOWNWARD as they slice through it\n⬆️ The air pushes back, and that push is called lift\n🚀 Thrust, weight and drag: the four forces on every plane\n📄 Try it yourself with a paper plane\n🛫 Bonus: why runways have to be so long\n\nNo myths here: planes do not fly because the air on top has further to travel. They fly because a tilted, curved wing throws air downward, and the air shoves back just as hard. That is Newton's third law, explained for curious kids ages 4 to 9.\n\nWhat should we explore next? Tell us in the comments and we might make it our next mission!\n\n#kidsscience #howdoplanesfly #stemforkids #wonderonauts #scienceforkids",
+  "tags": "kids science, how do planes fly, science for kids, STEM for kids, airplanes for kids, lift and thrust, four forces of flight, educational video for children, wonder-o-nauts",
+  "thumbnail_text": "How do planes\nFLY?",
+  "thumbnail_prop": "plane",
+  "music": true,
+  "music_seed": 91,
+  "bgm_vol": 0.13,
+  "shorts_scenes": [2, 5, 8],
+  "scenes": [
+    {
+      "image": "frames/scene_01.png",
+      "chapter": "Blast off!",
+      "sfx": "sparkle",
+      "narration": "Hello again, Wonder-o-nauts! Today we are chasing something enormous, something heavy, something that somehow floats way up above the clouds. An airplane! How does a machine that big stay up in the sky? Buckle up, let's find out!"
+    },
+    {
+      "image": "frames/scene_02.png",
+      "chapter": "The big question",
+      "sfx": "pop",
+      "narration": "A big plane can weigh more than forty elephants. Forty! And yet it climbs into the sky like it weighs nothing at all. It is not floating like a balloon, and it is not magic. So what is holding it up?"
+    },
+    {
+      "image": "frames/scene_03.png",
+      "chapter": "Air is real stuff",
+      "sfx": "whoosh",
+      "narration": "Here is secret number one. Air is not nothing! It is real stuff, made of trillions of tiny molecules bumping around us. You cannot see them, but you can feel them. Wave your hand fast and you can feel the air pushing back!"
+    },
+    {
+      "image": "frames/scene_04.png",
+      "chapter": "Wings push air DOWN",
+      "sfx": "whoosh",
+      "narration": "Now look closely at a wing. It is curved on top, and it tilts up at the front. So when the wing races forward, it catches all that air and flings it downward, like a giant invisible waterfall pouring off the back of the wing."
+    },
+    {
+      "image": "frames/scene_05.png",
+      "chapter": "That push is LIFT",
+      "sfx": "pop",
+      "narration": "And here comes the magic part. Whenever you push on something, it pushes you back, just as hard. The wing shoves the air down, so the air shoves the wing up! Scientists call that upward push lift. Lift is what holds the whole plane in the sky!"
+    },
+    {
+      "image": "frames/scene_06.png",
+      "chapter": "Engines push forward",
+      "sfx": "whoosh",
+      "narration": "But a wing only makes lift when air is rushing over it. That is what the engines are for! They roar and push the plane forward, faster and faster. Scientists call that forward push thrust. No thrust, no rushing air, no lift."
+    },
+    {
+      "image": "frames/scene_07.png",
+      "chapter": "The four forces",
+      "sfx": "whoosh",
+      "narration": "So every single plane is having a tug of war with four forces. Lift pulls it up, weight pulls it down. Thrust pushes it forward, and drag, the air rubbing against it, holds it back. When lift beats weight, up you go!"
+    },
+    {
+      "image": "frames/scene_08.png",
+      "chapter": "Try it yourself!",
+      "sfx": "sparkle",
+      "narration": "You can be a wing scientist right now! Fold a paper plane and give it a gentle push. Watch how the flat wings throw the air down and glide. Then try tilting the wings up a little more. Does it climb? Does it flip? Experiment!"
+    },
+    {
+      "image": "frames/scene_09.png",
+      "chapter": "Bonus: long runways",
+      "sfx": "whoosh",
+      "narration": "Here is a bonus wonder. Ever wondered why runways are so incredibly long? A heavy plane needs air rushing over its wings really, really fast before there is enough lift to carry it. So it needs a long run up before it can leap into the sky!"
+    },
+    {
+      "image": "frames/scene_10.png",
+      "chapter": "Mission complete!",
+      "sfx": "success",
+      "narration": "Brilliant work, Wonder-o-naut! Now you know the secret. Wings throw air downward, and the air pushes right back and lifts the plane up! If you loved this adventure, ask a grown-up to like and subscribe, and tell us in the comments... what should we explore next? See you soon!"
+    }
+  ]
+}

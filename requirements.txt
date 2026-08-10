@@ -1,0 +1,5 @@
+# Wonder-o-nauts video factory -- everything free, no API keys.
+# ffmpeg + ffprobe must also be on PATH (brew install ffmpeg / apt install ffmpeg).
+pillow>=10.0
+numpy>=1.24
+edge-tts>=6.1

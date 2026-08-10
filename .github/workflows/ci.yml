@@ -1,0 +1,95 @@
+name: smoke
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+
+      - name: Install python deps
+        run: pip install -q -r requirements.txt
+
+      - name: Preflight
+        run: python3 factory.py --check
+
+      - name: Unit tests (paths, timing, cache keys, music, QC, safe zones)
+        run: python3 tests/unit.py
+
+      - name: Music engine sanity (peaks ~0.72, deterministic)
+        run: |
+          python3 - <<'PY'
+          import os, wave, numpy as np
+          from engine import music
+          os.makedirs("_audiocheck", exist_ok=True)
+          paths = [music.render_bgm("_audiocheck/bgm.wav", 10.0, seed=7),
+                   music.render_sting("_audiocheck/sting.wav")]
+          paths += [music.render_sfx(k, f"_audiocheck/{k}.wav") for k in music.SFX]
+          for p in paths:
+              with wave.open(p) as w:
+                  x = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2")
+              peak = float(np.max(np.abs(x))) / 32767.0
+              print(f"{os.path.basename(p):<14} peak {peak:.3f}")
+              assert 0.55 <= peak <= 0.75, f"{p} peak {peak} out of range"
+          a = music.render_bgm("_audiocheck/a.wav", 8.0, seed=3)
+          b = music.render_bgm("_audiocheck/b.wav", 8.0, seed=3)
+          assert open(a, "rb").read() == open(b, "rb").read(), "bgm is not deterministic"
+          print("music OK")
+          PY
+
+      - name: Scene art renders
+        run: python3 projects/why-is-the-sky-blue/render_scenes.py --sheet
+
+      # No network TTS: smoke.py fabricates narration + matching cache stamps,
+      # so the whole pipeline runs offline. Everything else is the real thing.
+      - name: Full pipeline smoke test (includes --shorts)
+        run: python3 tests/smoke.py --keep
+
+      # smoke.py built projects/_smoke/ and --keep left it in place, narration
+      # cache included, so preview mode runs offline too.
+      - name: Preview mode is fast and never overwrites final artifacts
+        run: |
+          python3 factory.py projects/_smoke --preview
+          test -f projects/_smoke/output/preview.mp4
+          test -f projects/_smoke/output/final.mp4
+
+      - name: Season dashboard
+        run: |
+          python3 plan_season.py status
+          python3 factory.py --season
+
+      - name: Scaffolder produces a buildable project
+        run: |
+          python3 new_episode.py ci-scaffold-check --scenes 3
+          python3 projects/ci-scaffold-check/render_scenes.py
+          test -f projects/ci-scaffold-check/frames/scene_03.png
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: episode-artifacts
+          retention-days: 7
+          path: |
+            projects/_smoke/output/qc_report.txt
+            projects/_smoke/output/metadata.txt
+            projects/_smoke/output/captions.srt
+            projects/_smoke/output/build_manifest.json
+            projects/_smoke/output/thumbnail_*.jpg
+            projects/why-is-the-sky-blue/frames/contact_sheet.jpg
