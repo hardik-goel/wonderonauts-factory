@@ -14,7 +14,7 @@
  * Re-run it whenever requirements.txt changes.
  */
 import { Sandbox } from "@vercel/sandbox";
-import { BOOTSTRAP } from "../lib/sandbox";
+import { BOOTSTRAP, ROOT } from "../lib/sandbox";
 
 const REPO =
   process.env.FACTORY_REPO_URL ?? "https://github.com/hardik-goel/wonderonauts-factory";
@@ -40,7 +40,8 @@ async function main() {
   // an encoder is worse than no snapshot, because every later build inherits it.
   const check = await sandbox.runCommand({
     cmd: "bash",
-    args: ["-lc", "python3 factory.py --check"],
+    // the cd matters: a login shell starts in $HOME, not the cloned repo
+    args: ["-lc", `cd ${ROOT} && python3 factory.py --check`],
     stdout: process.stdout,
     stderr: process.stderr,
   });
