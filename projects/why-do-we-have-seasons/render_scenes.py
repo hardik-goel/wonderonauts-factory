@@ -207,7 +207,7 @@ def scene_10():
                   58, fill=P["white"], stroke=11)
     tk.speech_pop(d, 760, 590, "LIKE + SUBSCRIBE", 58, fill=P["rocket_red"],
                   text_fill=P["white"])
-    tk.title_text(d, (742, 800), "What should we explore next?", 50,
+    tk.title_text(d, (640, 800), "What should we explore next?", 48,
                   fill=P["white"], stroke=10)
     assert not tk.safe_zone_violations(zones["end_cards"]), \
         tk.safe_zone_violations(zones["end_cards"])

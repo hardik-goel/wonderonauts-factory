@@ -30,6 +30,11 @@ from engine import toolkit as tk     # noqa: E402
 
 PASSED, FAILED = 0, []
 
+# Minimum clearance an outro must leave around YouTube's end-card zone.
+# Sized so a font ~20% wider than the widest we currently see still fits: the
+# alternative is discovering it on the render host, which is what happened.
+END_CARD_MARGIN = 90
+
 
 def check(cond, label, detail=""):
     global PASSED
@@ -312,8 +317,18 @@ def test_toolkit_and_outros():
         mod.SCENES[-1]()                       # draw the outro
         zones = tk.end_screen_guides(None) if False else {
             "end_cards": (int(tk.W * 0.60), int(tk.H * 0.60), tk.W, tk.H)}
-        bad = tk.safe_zone_violations(zones["end_cards"])
+        zone = zones["end_cards"]
+        bad = tk.safe_zone_violations(zone)
         check(not bad, f"{slug}: outro keeps the end-card zone clear", str(bad))
+        # Clearing the zone by one pixel is not clearing it. Text width depends
+        # on the font that happens to be installed -- DejaVu on Linux is ~18%
+        # wider than the macOS fallback -- so an outro that passed on a laptop
+        # overflowed the end-card zone on the render host. Demand real margin.
+        near = [(k, b) for k, b in tk.content_boxes() if b[3] > zone[1]]
+        margin = min((zone[0] - b[2] for _, b in near), default=tk.W)
+        check(margin >= END_CARD_MARGIN,
+              f"{slug}: outro clears the end-card zone by >= {END_CARD_MARGIN}px",
+              f"{margin:.0f}px")
         for s in cfg["scenes"]:
             if s.get("sfx") and s["sfx"] not in factory.VALID_SFX:
                 check(False, f"{slug}: unknown sfx {s['sfx']}")

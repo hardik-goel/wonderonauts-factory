@@ -19,12 +19,29 @@ import { ARTIFACTS } from "./types";
 
 const REPO = process.env.FACTORY_REPO_URL ?? "https://github.com/hardik-goel/wonderonauts-factory";
 const SNAPSHOT = process.env.FACTORY_SNAPSHOT_ID;
-const ROOT = "/vercel/sandbox";
 const BUILD_TIMEOUT_MS = 25 * 60 * 1000;
 
-/** apt + pip bootstrap. Skipped entirely when a prepared snapshot is available. */
+/**
+ * Where the cloned repo actually lives.
+ *
+ * A git-sourced sandbox starts in /vercel and clones into a directory named
+ * after the repository — NOT into /vercel/sandbox, which does not exist. Every
+ * command and every file path has to be anchored here, so derive it from the
+ * URL rather than hardcoding a path that silently breaks if the repo is
+ * renamed or forked.
+ */
+export const ROOT = `/vercel/${REPO.replace(/\.git$/, "").replace(/\/+$/, "").split("/").pop()}`;
+
+/**
+ * apt + pip bootstrap. Skipped entirely when a prepared snapshot is available.
+ *
+ * The `cd` is load-bearing: these run under `bash -lc`, and a login shell
+ * starts in $HOME rather than the cloned repo, so pip cannot see
+ * requirements.txt without it.
+ */
 export const BOOTSTRAP = [
   "set -eux",
+  `cd ${ROOT}`,
   "export DEBIAN_FRONTEND=noninteractive",
   "sudo apt-get update -qq",
   "sudo apt-get install -y -qq ffmpeg fonts-dejavu-core",
@@ -89,19 +106,19 @@ export async function startRender(draft: Draft | BundledEpisode): Promise<Job> {
   };
 
   const files: { path: string; content: Buffer; mode?: number }[] = [
-    { path: "job.json", content: Buffer.from(JSON.stringify(job, null, 2)) },
-    { path: "build.sh", content: Buffer.from(buildScript(projectDir)), mode: 0o755 },
+    { path: `${ROOT}/job.json`, content: Buffer.from(JSON.stringify(job, null, 2)) },
+    { path: `${ROOT}/build.sh`, content: Buffer.from(buildScript(projectDir)), mode: 0o755 },
   ];
 
   if (!bundled) {
     const d = draft as Draft;
-    await sandbox.mkDir(`${projectDir}/frames`);
+    await sandbox.mkDir(`${ROOT}/${projectDir}/frames`);
     files.push(
       {
-        path: `${projectDir}/video.json`,
+        path: `${ROOT}/${projectDir}/video.json`,
         content: Buffer.from(JSON.stringify(d.videoJson, null, 2) + "\n"),
       },
-      { path: `${projectDir}/render_scenes.py`, content: Buffer.from(d.renderScenes) },
+      { path: `${ROOT}/${projectDir}/render_scenes.py`, content: Buffer.from(d.renderScenes) },
     );
   }
 
@@ -149,7 +166,7 @@ async function readText(
   sandbox: Awaited<ReturnType<typeof attach>>,
   path: string,
 ): Promise<string | null> {
-  const buf = await sandbox.readFileToBuffer({ path, cwd: ROOT });
+  const buf = await sandbox.readFileToBuffer({ path: `${ROOT}/${path}` });
   return buf ? buf.toString("utf8") : null;
 }
 
@@ -220,8 +237,7 @@ export async function readArtifact(
   const { slug } = JSON.parse(meta) as Job;
 
   const node = await sandbox.readFile({
-    path: `projects/${slug}/output/${name}`,
-    cwd: ROOT,
+    path: `${ROOT}/projects/${slug}/output/${name}`,
   });
   if (!node) return null;
 

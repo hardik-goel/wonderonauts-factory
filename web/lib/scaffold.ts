@@ -102,7 +102,7 @@ function sceneBody(i: number, total: number, input: Prepared): string {
       `    tk.title_text(d, (1060, 160), "Mission complete!", 100, fill=P["accent"], stroke=15)`,
       `    tk.title_text(d, (1010, 370), ${recap}, 60, fill=P["white"], stroke=11)`,
       `    tk.speech_pop(d, 780, 600, "LIKE + SUBSCRIBE", 58, fill=P["rocket_red"], text_fill=P["white"])`,
-      `    tk.title_text(d, (760, 800), "What should we explore next?", 50, fill=P["white"], stroke=10)`,
+      `    tk.title_text(d, (640, 800), "What should we explore next?", 48, fill=P["white"], stroke=10)`,
       `    assert not tk.safe_zone_violations(zones["end_cards"]), \\`,
       `        tk.safe_zone_violations(zones["end_cards"])`,
     ].join("\n");
