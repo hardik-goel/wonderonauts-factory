@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Draft, Job } from "@/lib/types";
+import { parseScript } from "@/lib/parse-script";
 
 type JobView = Job & { log: string };
 type Phase = "idle" | "writing" | "review" | "rendering" | "done" | "failed";
@@ -300,6 +301,9 @@ function WritePanel({
   const [prop, setProp] = useState("rocket");
   const [look, setLook] = useState("land");
   const [scenes, setScenes] = useState(BLANK_SCENES);
+  const [pasting, setPasting] = useState(false);
+  const [paste, setPaste] = useState("");
+  const [pasteNote, setPasteNote] = useState<string | null>(null);
 
   const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
   const written = scenes.filter((s) => s.narration.trim()).length;
@@ -307,15 +311,78 @@ function WritePanel({
   const update = (i: number, patch: Partial<(typeof scenes)[number]>) =>
     setScenes(scenes.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
+  function applyPaste() {
+    const { title: t, scenes: parsed } = parseScript(paste);
+    if (!parsed.length) {
+      setPasteNote("Couldn't find any scenes in that. Separate them with blank lines, or paste a table.");
+      return;
+    }
+    if (t) setTitle(t);
+    setScenes(parsed);
+    setPasting(false);
+    setPaste("");
+    setPasteNote(null);
+  }
+
   return (
     <section className="mt-4 space-y-4">
       <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <p className="text-sm text-muted">
-          You write the narration; the studio builds the scene art, voice, music,
-          captions, thumbnails and the upload sheet. Aim for{" "}
-          <strong className="text-foreground">35–55 words</strong> a scene — that
-          lands around four minutes.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="max-w-xl text-sm text-muted">
+            You write the narration; the studio builds the scene art, voice,
+            music, captions, thumbnails and the upload sheet. Aim for{" "}
+            <strong className="text-foreground">35–55 words</strong> a scene —
+            that lands around four minutes.
+          </p>
+          <button
+            onClick={() => {
+              setPasting(!pasting);
+              setPasteNote(null);
+            }}
+            disabled={busy}
+            className="shrink-0 rounded-lg border border-border px-3 py-2 text-sm text-muted
+                       transition hover:border-sky hover:text-foreground"
+          >
+            {pasting ? "Cancel" : "Paste a whole script"}
+          </button>
+        </div>
+
+        {pasting && (
+          <div className="mt-4">
+            <textarea
+              value={paste}
+              onChange={(e) => setPaste(e.target.value)}
+              rows={10}
+              autoFocus
+              placeholder={`Paste the whole thing here — a table, a numbered outline, or just paragraphs.
+
+Title: The Hare and the Tortoise
+
+1. Blast off!
+Hello, Wonder-o-nauts! Today we are telling a very old story…
+
+2. Meet the hare
+The hare was fast. Really fast…`}
+              className="log w-full resize-y rounded-lg border border-border bg-surface-2 px-3 py-2
+                         outline-none placeholder:text-muted/50 focus:border-sky"
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                onClick={applyPaste}
+                disabled={!paste.trim()}
+                className="rounded-lg bg-sky px-4 py-2 text-sm font-medium text-white
+                           transition hover:brightness-110 disabled:opacity-40"
+              >
+                Fill the scenes
+              </button>
+              <span className="text-xs text-muted">
+                Markdown tables, “1. Chapter” outlines and blank-line-separated
+                paragraphs all work. Missing chapter labels get filled in.
+              </span>
+            </div>
+            {pasteNote && <p className="mt-2 text-xs text-bad">{pasteNote}</p>}
+          </div>
+        )}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
           <input
