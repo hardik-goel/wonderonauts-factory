@@ -2,7 +2,7 @@
 
 A hosted UI over the factory: get a finished episode without a terminal.
 
-## Three ways in — two of them need no API key
+## Four ways in — three of them need no API key
 
 The factory's promise is "no API keys, no accounts". Writing the *words* is the
 one step that needs either a model or a human, so only that step can require a
@@ -14,6 +14,7 @@ encoding, mastering — never calls a paid API.
 | **Write it for me** | yes — `ANTHROPIC_API_KEY` | a question, or a YouTube link to research |
 | **I'll write it** | **no** | the narration; the studio generates the scene art |
 | **Render a sample** | **no** | nothing — builds one of the five bundled episodes |
+| **Dad jokes** | **no** | two dogs' dialogue; the studio picks the setting |
 
 The UI reads `/api/capabilities` on load. With no key set, the AI tab is
 disabled with the reason shown and "I'll write it" is selected by default — no
@@ -22,6 +23,7 @@ dead-end error.
 ```
                     ┌── /api/draft ─────► Claude writes the script   (key)
 topic / link / words ┼── /api/scaffold ──► templated script + art    (keyless)
+                    ├── /api/dogs ──────► two-dog dialogue + art     (keyless)
                     └── preset ─────────► already in the repo        (keyless)
         │
         ▼
@@ -45,6 +47,35 @@ Python — download it and art-direct it by hand if you want more.
 `pnpm exec tsx scripts/verify-scaffold.ts` renders every prop and look through
 the real toolkit and lints the result, because a bad primitive call in generated
 code would otherwise first surface a minute into someone's build.
+
+### Dad jokes: two dogs, one setting, two voices
+
+Paste dialogue as `Name: line`, one line per beat, with an optional
+`Title: ...`. `lib/dogs.ts` turns it into an episode where the two characters
+never blur together:
+
+- **Voice** — each speaker gets its own Edge TTS voice, written per scene as
+  `scenes[].voice`. `factory.py` synthesizes that scene with that voice; the TTS
+  cache key includes it, so changing one character re-synthesizes only their
+  lines.
+- **Mouth and expression** — the dog with the current line is drawn with an open
+  muzzle, the other with a closed one, and the punchline gets the `laugh` face.
+  This is a per-**line** mouth state, not phoneme lip-sync: the pipeline renders
+  one still per scene and pans it, so there is no frame-by-frame mouth to
+  animate. Real lip-sync needs a frame-sequence renderer and a forced aligner —
+  it is in `BACKLOG.md`, not in this.
+- **Setting** — beach, mountains, park, night camp, rainy day or the moon,
+  shuffled per title so it differs every time, except that an obvious word in
+  the title wins: "Mountain Hike Havoc" is set in the mountains, not on the moon.
+  You can also pick one explicitly.
+
+The generated `video.json` carries `format: "dialogue"`, which tells
+`factory.py` and the QC report to judge it as a two-hander: "Why not?" is a
+complete beat, not a scene that forgot its narration, and half a minute is a
+finished joke, not a short episode.
+
+`pnpm exec tsx scripts/verify-dogs.ts` renders all six settings through the real
+toolkit and asserts each speaker keeps exactly one voice.
 
 ## Why the split
 

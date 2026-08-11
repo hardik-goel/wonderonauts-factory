@@ -503,6 +503,225 @@ def kid(d: ScaledDraw, x: int, y: int, scale: float = 1.0, skin=None, shirt=None
                 20, 160, fill=ink)
 
 
+def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right",
+        coat=None, ear=None, speaking: bool = False, expression: str = "happy",
+        collar=None, tongue: bool = True):
+    """Sitting cartoon dog with its paws at (x, y).
+
+    `speaking` opens the muzzle; the listener in a two-hander should be drawn
+    with speaking=False so it is always obvious who has the line. This is a
+    per-line mouth state, not phoneme lip-sync -- the pipeline renders one
+    still per scene, so there is no frame-by-frame mouth to animate.
+
+    expression: happy | laugh | surprised | deadpan | smug
+    Give each character a different `coat` so the two never blur together.
+    """
+    s = scale
+    sgn = 1 if facing == "right" else -1
+    c = coat or (214, 168, 108)
+    ec = ear or tuple(max(0, v - 34) for v in c)
+    ink = PALETTE["ink"]
+    cream = (250, 240, 226)
+
+    def P(px, py):
+        return (x + px * sgn * s, y + py * s)
+
+    def ell(cx, cy, rx, ry, fill):
+        a, b = P(cx - rx, cy - ry), P(cx + rx, cy + ry)
+        d.ellipse([min(a[0], b[0]), min(a[1], b[1]),
+                   max(a[0], b[0]), max(a[1], b[1])], fill=fill)
+
+    register_box("dog", (x - 170 * s, y - 330 * s, x + 170 * s, y + 10 * s))
+
+    # tail — a raised tail is most of what makes a cartoon dog read as friendly
+    d.polygon([P(-74, -108), P(-150, -190), P(-124, -206), P(-58, -132)], fill=c)
+    ell(-140, -198, 18, 18, c)
+    # haunch + front legs
+    ell(-46, -72, 62, 70, c)
+    for lx in (28, 74):
+        a, b = P(lx - 22, -74), P(lx + 22, 0)
+        d.rounded_rectangle([min(a[0], b[0]), min(a[1], b[1]),
+                             max(a[0], b[0]), max(a[1], b[1])],
+                            radius=20 * s, fill=c)
+        ell(lx, -6, 26, 16, cream)
+    # body
+    ell(6, -128, 70, 78, c)
+    if collar:
+        a, b = P(-46, -196), P(58, -172)
+        d.rounded_rectangle([min(a[0], b[0]), min(a[1], b[1]),
+                             max(a[0], b[0]), max(a[1], b[1])],
+                            radius=12 * s, fill=collar)
+    # head
+    hx, hy = 16, -244
+    ell(hx, hy, 74, 68, c)
+    # ears: floppy, hanging beside the head
+    for off in (-72, 72):
+        ell(hx + off, hy + 16, 26, 54, ec)
+    # muzzle
+    ell(hx + 30, hy + 34, 46, 32, cream)
+    ell(hx + 56, hy + 20, 13, 10, ink)                      # nose
+    # eyes and brows carry the expression
+    if expression == "surprised":
+        ell(hx + 6, hy - 12, 13, 15, PALETTE["white"])
+        ell(hx + 6, hy - 12, 8, 9, ink)
+        ell(hx - 40, hy - 10, 11, 13, PALETTE["white"])
+        ell(hx - 40, hy - 10, 6, 8, ink)
+    elif expression == "laugh":
+        for ex in (hx + 6, hx - 40):                        # happy closed arcs
+            a, b = P(ex - 13, hy - 24), P(ex + 13, hy - 2)
+            d.chord([min(a[0], b[0]), min(a[1], b[1]),
+                     max(a[0], b[0]), max(a[1], b[1])], 200, 340, fill=ink)
+    else:
+        ell(hx + 6, hy - 12, 9, 11, ink)
+        ell(hx - 40, hy - 10, 8, 10, ink)
+    if expression == "smug":
+        d.line([P(hx - 14, hy - 40), P(hx + 22, hy - 32)], fill=ink, width=int(7 * s))
+    elif expression == "surprised":
+        d.line([P(hx - 16, hy - 44), P(hx + 24, hy - 48)], fill=ink, width=int(7 * s))
+
+    # mouth: open while this character has the line
+    if speaking:
+        mh = 30 if expression == "laugh" else 22
+        ell(hx + 34, hy + 46, 30, mh, ink)
+        if tongue:
+            ell(hx + 34, hy + 46 + mh * 0.42, 19, mh * 0.5, (238, 138, 150))
+    else:
+        a, b = P(hx + 12, hy + 30), P(hx + 56, hy + 56)
+        d.chord([min(a[0], b[0]), min(a[1], b[1]),
+                 max(a[0], b[0]), max(a[1], b[1])], 20, 160, fill=ink)
+    for cx in (hx - 34, hx + 62):                            # cheeks
+        ell(cx, hy + 26, 14, 9, (250, 178, 178))
+
+
+def hare(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right",
+         fur=None, running: bool = False, ears: str = "up", mouth: str = "smile"):
+    """Cartoon hare with its feet at (x, y). ears: up | back | one_down.
+
+    `running` leans the body forward and stretches the legs -- the pose the
+    fable needs for "shot away in a cloud of dust". `ears="back"` reads as
+    speed; a sleeping hare wants ears="one_down".
+    """
+    s = scale
+    sgn = 1 if facing == "right" else -1
+    f = fur or (216, 206, 196)
+    dk = (188, 176, 166)
+    ink = PALETTE["ink"]
+
+    def P(px, py):
+        return (x + px * sgn * s, y + py * s)
+
+    def ell(cx, cy, rx, ry, fill):
+        a, b = P(cx - rx, cy - ry), P(cx + rx, cy + ry)
+        d.ellipse([min(a[0], b[0]), min(a[1], b[1]),
+                   max(a[0], b[0]), max(a[1], b[1])], fill=fill)
+
+    lean = -18 if running else 0
+    register_box("hare", (x - 150 * s, y - 300 * s, x + 150 * s, y + 10 * s))
+
+    # tail
+    ell(-78 + lean, -78, 24, 24, (238, 232, 226))
+    # hind leg
+    if running:
+        d.polygon([P(-58, -22), P(-126, 2), P(-118, 22), P(-40, 6)], fill=dk)
+        ell(-122, 12, 20, 14, dk)
+    else:
+        ell(-52, -24, 38, 28, dk)
+    # body, leaning forward when running
+    ell(lean * 0.5, -74, 76, 58, f)
+    # front leg
+    if running:
+        d.polygon([P(34, -44), P(104, -18), P(96, 2), P(24, -22)], fill=dk)
+        ell(100, -8, 20, 14, dk)
+    else:
+        ell(46, -20, 26, 24, dk)
+    # head
+    hx, hy = 58 + lean, -142
+    ell(hx, hy, 46, 42, f)
+    # Ears: tall ellipses, not polygon slivers -- a thin quad reads as a stick.
+    pink = (246, 196, 200)
+    for i, off in enumerate((-18, 20)):
+        if ears == "back":
+            # laid flat along the back: reads as speed
+            ell(hx - 52 - i * 16, hy - 34 + i * 22, 62, 19, f)
+            ell(hx - 52 - i * 16, hy - 34 + i * 22, 46, 10, pink)
+        elif ears == "one_down" and i == 1:
+            ell(hx + off + 24, hy + 22, 20, 50, f)
+            ell(hx + off + 24, hy + 22, 11, 36, pink)
+        else:
+            ell(hx + off, hy - 78, 22, 62, f)
+            ell(hx + off, hy - 78, 12, 46, pink)
+    # face
+    ell(hx + 20, hy - 6, 8, 10, ink)
+    ell(hx + 40, hy + 6, 8, 7, (240, 150, 160))          # nose
+    if mouth == "smile":
+        a, b = P(hx + 20, hy + 10), P(hx + 46, hy + 30)
+        d.chord([min(a[0], b[0]), min(a[1], b[1]),
+                 max(a[0], b[0]), max(a[1], b[1])], 20, 160, fill=ink)
+    ell(hx - 2, hy + 16, 12, 8, (250, 178, 178))          # cheek
+
+
+def tortoise(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right",
+             shell=None, skin=None, tucked: bool = False, mouth: str = "smile"):
+    """Cartoon tortoise with its feet at (x, y).
+
+    `tucked` pulls the head into the shell. The shell is a dome with visible
+    scutes because a plain half-ellipse reads as a rock.
+    """
+    s = scale
+    sgn = 1 if facing == "right" else -1
+    sh = shell or (166, 124, 74)
+    sh_dk = (138, 100, 58)
+    sk = skin or (126, 176, 118)
+    sk_dk = (104, 152, 98)
+    ink = PALETTE["ink"]
+
+    def P(px, py):
+        return (x + px * sgn * s, y + py * s)
+
+    def ell(cx, cy, rx, ry, fill):
+        a, b = P(cx - rx, cy - ry), P(cx + rx, cy + ry)
+        d.ellipse([min(a[0], b[0]), min(a[1], b[1]),
+                   max(a[0], b[0]), max(a[1], b[1])], fill=fill)
+
+    register_box("tortoise", (x - 170 * s, y - 190 * s, x + 170 * s, y + 10 * s))
+
+    # legs first, so the shell overlaps their tops
+    for lx in (-70, 40):
+        a, b = P(lx - 30, -56), P(lx + 30, 0)
+        d.rounded_rectangle([min(a[0], b[0]), min(a[1], b[1]),
+                             max(a[0], b[0]), max(a[1], b[1])],
+                            radius=26 * s, fill=sk_dk)
+    # tail
+    d.polygon([P(-100, -62), P(-152, -40), P(-100, -30)], fill=sk)
+    # head and neck
+    if not tucked:
+        a, b = P(70, -104), P(132, -50)
+        d.rounded_rectangle([min(a[0], b[0]), min(a[1], b[1]),
+                             max(a[0], b[0]), max(a[1], b[1])],
+                            radius=26 * s, fill=sk)
+        ell(136, -102, 46, 42, sk)
+        ell(152, -114, 8, 10, ink)
+        ell(120, -84, 13, 9, (150, 198, 140))
+        if mouth == "smile":
+            a, b = P(134, -104), P(170, -78)
+            d.chord([min(a[0], b[0]), min(a[1], b[1]),
+                     max(a[0], b[0]), max(a[1], b[1])], 20, 160, fill=ink)
+    # shell: dome, then a slim rim. A deep rim reads as a table, not a shell.
+    a, b = P(-118, -186), P(118, -34)
+    d.pieslice([min(a[0], b[0]), min(a[1], b[1]),
+                max(a[0], b[0]), max(a[1], b[1])], 180, 360, fill=sh)
+    a, b = P(-124, -48), P(124, -26)
+    d.rounded_rectangle([min(a[0], b[0]), min(a[1], b[1]),
+                         max(a[0], b[0]), max(a[1], b[1])],
+                        radius=11 * s, fill=sh_dk)
+    # scutes -- what makes it read as a shell rather than a rock
+    for cx, cy, r in ((0, -132, 34), (-62, -104, 27), (62, -104, 27),
+                      (-102, -78, 18), (102, -78, 18)):
+        d.polygon([P(cx + r * math.cos(math.radians(a2)),
+                     cy + r * math.sin(math.radians(a2))) for a2 in range(0, 360, 60)],
+                  fill=sh_dk)
+
+
 def rocket(d: ScaledDraw, x: int, y: int, scale: float = 1.0, flame: bool = True,
            body=None, accent=None, tilt: str = "up", face: bool = False):
     """Rocket mascot, centered on (x, y). tilt: up | right."""

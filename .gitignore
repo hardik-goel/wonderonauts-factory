@@ -1,5 +1,6 @@
 # Generated build artifacts -- all of it is reproducible from source
 projects/_smoke/
+projects/_dogs/
 projects/*/audio/
 projects/*/clips/
 projects/*/output/

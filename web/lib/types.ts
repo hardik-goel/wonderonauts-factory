@@ -3,10 +3,16 @@ export type Scene = {
   chapter: string;
   sfx: "whoosh" | "pop" | "sparkle" | "success";
   narration: string;
+  /** Overrides the episode voice for this scene — how a two-hander gives each
+   *  character its own voice instead of one narrator reading both parts. */
+  voice?: string;
+  rate?: string;
 };
 
 export type VideoConfig = {
   title: string;
+  /** "dialogue" relaxes factory.py's per-scene word-count lint for two-handers. */
+  format?: "explainer" | "dialogue";
   voice: string;
   rate: string;
   description: string;

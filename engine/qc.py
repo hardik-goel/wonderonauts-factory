@@ -20,6 +20,12 @@ import subprocess
 WPM_MIN, WPM_MAX = 110, 175
 WPM_LANGS = ("en",)
 RUNTIME_MIN, RUNTIME_MAX = 120, 900          # seconds
+
+# A two-hander joke is a different format and would fail every rule above for
+# the wrong reasons: "Why not?" delivered as a beat reads as 190 wpm, and the
+# whole bit is over in half a minute by design. Pacing is still measured and
+# printed for a dialogue episode -- it is just not treated as a defect.
+DIALOGUE_RUNTIME_MIN, DIALOGUE_RUNTIME_MAX = 15, 900
 MEAN_DB_MIN = -30.0
 MAX_DB_MAX = -1.0
 
@@ -113,7 +119,10 @@ def build_report(ctx: dict) -> tuple[str, str]:
     scenes = ctx["scenes"]
     total = float(ctx["total"])
     lang = (ctx.get("lang") or "en").split("-")[0]
-    judge_wpm = lang in WPM_LANGS
+    dialogue = ctx.get("format") == "dialogue"
+    judge_wpm = lang in WPM_LANGS and not dialogue
+    rt_min, rt_max = ((DIALOGUE_RUNTIME_MIN, DIALOGUE_RUNTIME_MAX) if dialogue
+                      else (RUNTIME_MIN, RUNTIME_MAX))
 
     rows = []
     for s in scenes:
@@ -132,10 +141,10 @@ def build_report(ctx: dict) -> tuple[str, str]:
             flag = flag.lower()          # reported, not enforced
         rows.append((s["i"], s["duration"], words, wpm, flag, s.get("chapter", "")))
 
-    if total < RUNTIME_MIN:
-        warns.append(f"runtime {_fmt_ts(total)} is under {RUNTIME_MIN//60} min")
-    if total > RUNTIME_MAX:
-        warns.append(f"runtime {_fmt_ts(total)} is over {RUNTIME_MAX//60} min")
+    if total < rt_min:
+        warns.append(f"runtime {_fmt_ts(total)} is under {rt_min}s")
+    if total > rt_max:
+        warns.append(f"runtime {_fmt_ts(total)} is over {rt_max//60} min")
 
     has_v, has_a = has_streams(ctx["video"])
     if has_v is False:
@@ -241,7 +250,12 @@ def build_report(ctx: dict) -> tuple[str, str]:
     L.append(f"     {total:>6.2f}s  {sum(r[2] for r in rows):>6}"
              f"  {sum(r[2] for r in rows) / max(0.01, total) * 60:>6.0f}")
     L.append("")
-    if not judge_wpm:
+    if dialogue:
+        L.append(f"note: dialogue episode -- the {WPM_MIN}-{WPM_MAX} wpm window and "
+                 "the minimum runtime are reported but not enforced, because a "
+                 "punchline is meant to be short")
+        L.append("")
+    elif not judge_wpm:
         L.append(f"note: the {WPM_MIN}-{WPM_MAX} wpm window is calibrated for "
                  f"English, so it is reported but not enforced for '{lang}'")
         L.append("")

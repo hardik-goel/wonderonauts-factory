@@ -255,6 +255,7 @@ The complete schema. Only `title` and `scenes` are strictly required, but
 | Key | Default | Meaning |
 |---|---|---|
 | `title` | — | YouTube title |
+| `format` | `explainer` | `explainer` or `dialogue`. A two-hander is linted against 2–45 words a scene instead of 20–80, and QC stops flagging its short runtime and punchline pacing |
 | `description` | — | Full description: hook, bullets, hashtags |
 | `tags` | — | Comma-separated YouTube tags |
 | `voice` | `en-US-AnaNeural` | Any Edge TTS voice |
@@ -281,7 +282,9 @@ The complete schema. Only `title` and `scenes` are strictly required, but
 | Key | Meaning |
 |---|---|
 | `image` | Path to the frame, relative to the project (`frames/scene_01.png`) |
-| `narration` | What the voice says. 20–80 words enforced; 35–55 is the sweet spot |
+| `narration` | What the voice says. 20–80 words enforced; 35–55 is the sweet spot (2–45 when `format` is `dialogue`) |
+| `voice` | Overrides the episode voice for this scene. How a two-hander gives each character its own voice instead of one narrator reading both parts |
+| `rate` | Overrides the episode speaking rate for this scene |
 | `chapter` | Chapter label. Emits a `M:SS Label` line into `metadata.txt` |
 | `sfx` | `whoosh`, `pop`, `sparkle` or `success` |
 | `narration_<code>` | Translated narration you supply — never machine-translated |
@@ -554,7 +557,16 @@ Contributions by episode: ep 1 `sun`, `kid`, `rocket`, `molecule`, `zig_ray`,
 `prism` · ep 2 `plane`, `paper_plane`, `airfoil`, `wind_streaks`, `force_arrow` ·
 ep 3 `planet`, `orbit_ring`, `light_beam` · ep 4 `raindrop`, `rainfall`,
 `puddle`, `cycle_arrow` · ep 5 `sea`, `wave`, `salt_crystal`, `mountain`,
-`river`.
+`river` · Studio `hare`, `tortoise`, `dog`.
+
+The last three exist because the pipeline is generic but the art library is not.
+Any storyline renders — the format, the audio, the captions and the mastering
+know nothing about science — but a story only *looks* like itself if its
+characters exist as primitives. A fable needs a hare and a tortoise; two dogs
+telling dad jokes need a dog that can face either way, open its muzzle for the
+line it is delivering, and hold an expression (`happy`, `laugh`, `surprised`,
+`deadpan`, `smug`). Adding a new cast member is the one real cost of a new kind
+of story.
 
 ---
 

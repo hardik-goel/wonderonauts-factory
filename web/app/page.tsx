@@ -6,7 +6,7 @@ import { parseScript } from "@/lib/parse-script";
 
 type JobView = Job & { log: string };
 type Phase = "idle" | "writing" | "review" | "rendering" | "done" | "failed";
-type Mode = "ai" | "write" | "bundled";
+type Mode = "ai" | "write" | "bundled" | "dogs";
 
 type Capabilities = {
   ai: boolean;
@@ -131,6 +131,9 @@ export default function Studio() {
           {mode === "write" && (
             <WritePanel caps={caps} busy={busy} onSubmit={(body) => void makeDraft("/api/scaffold", body)} />
           )}
+          {mode === "dogs" && (
+            <DogsPanel busy={busy} onSubmit={(body) => void makeDraft("/api/dogs", body)} />
+          )}
           {mode === "bundled" && (
             <BundledPanel caps={caps} busy={busy} onRender={(preset) => void render({ preset })} />
           )}
@@ -203,6 +206,7 @@ function ModeTabs({
       disabled: !caps.ai,
     },
     { id: "write", label: "I'll write it", hint: "no API key needed" },
+    { id: "dogs", label: "\u{1F436} Dad jokes", hint: "two dogs, new setting each time" },
     { id: "bundled", label: "Render a sample", hint: "zero typing" },
   ];
 
@@ -465,6 +469,101 @@ The hare was fast. Really fast…`}
   );
 }
 
+const DOG_EXAMPLE = `Title: Beach Day Bonanza
+
+Rex: Hey Bo, why don't crabs ever share their snacks?
+Bo: I don't know Rex. Why not?
+Rex: Because they are shellfish!
+Bo: That is the worst one yet. Do another.
+Rex: What do you call a dog that does magic tricks?
+Bo: Please stop.
+Rex: A labracadabrador!`;
+
+function DogsPanel({
+  busy,
+  onSubmit,
+}: {
+  busy: boolean;
+  onSubmit: (body: unknown) => void;
+}) {
+  const [script, setScript] = useState("");
+  const [setting, setSetting] = useState("");
+  const [settings, setSettings] = useState<{ id: string; label: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/dogs")
+      .then((r) => r.json())
+      .then((d) => setSettings(d.settings ?? []))
+      .catch(() => setSettings([]));
+  }, []);
+
+  const lineRe = /^\s*[A-Za-z][\w '.-]{0,24}\s*[:\-\u2014]\s*\S/;
+  const lines = script
+    .split("\n")
+    .filter((l) => lineRe.test(l) && !/^\s*title\s*[:\-\u2014]/i.test(l));
+  const speakers = Array.from(
+    new Set(lines.map((l) => l.split(/[:\-\u2014]/)[0].trim().toLowerCase())),
+  );
+
+  return (
+    <section className="mt-4 space-y-4">
+      <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <p className="text-sm text-muted">
+          Two dogs, one dad joke, a different setting every time. Write it as{" "}
+          <code className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">Name: line</code>{" "}
+          \u2014 one line each. Each dog gets its own voice, and only the one with
+          the line is drawn with its mouth open.
+        </p>
+
+        <textarea
+          value={script}
+          onChange={(e) => setScript(e.target.value)}
+          rows={12}
+          placeholder={DOG_EXAMPLE}
+          className="log mt-4 w-full resize-y rounded-lg border border-border bg-surface-2 px-3 py-2
+                     outline-none placeholder:text-muted/50 focus:border-sky"
+        />
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setScript(DOG_EXAMPLE)}
+            disabled={busy}
+            className="rounded-lg border border-border px-3 py-2 text-sm text-muted
+                       transition hover:border-sky hover:text-foreground"
+          >
+            Use the example
+          </button>
+          <select
+            value={setting}
+            onChange={(e) => setSetting(e.target.value)}
+            disabled={busy}
+            className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-sky"
+          >
+            <option value="">Surprise me (a new setting each time)</option>
+            {settings.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+          <span className="text-xs text-muted">
+            {lines.length} line{lines.length === 1 ? "" : "s"} \u00b7{" "}
+            {speakers.length} speaker{speakers.length === 1 ? "" : "s"}
+            {speakers.length > 2 && " \u2014 only the first two get a dog"}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={() => onSubmit({ script, setting: setting || undefined })}
+        disabled={busy || lines.length < 2}
+        className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-ink transition
+                   hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Build the episode
+      </button>
+    </section>
+  );
+}
+
 function BundledPanel({
   caps,
   busy,
@@ -664,14 +763,14 @@ function RenderPanel({
         <div className="grid gap-5 sm:grid-cols-2">
           {has("final.mp4") && (
             <Card title="Episode">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              { }
               <video src={art("final.mp4")} controls className="w-full rounded-lg bg-black" />
               <Download href={art("final.mp4")} name="final.mp4" />
             </Card>
           )}
           {has("short.mp4") && (
             <Card title="Short (captions burned in)">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              { }
               <video src={art("short.mp4")} controls className="mx-auto max-h-[420px] rounded-lg bg-black" />
               <Download href={art("short.mp4")} name="short.mp4" />
             </Card>

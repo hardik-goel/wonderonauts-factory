@@ -261,7 +261,18 @@ def test_qc():
         ctx["scenes"] = ctx["scenes"][:2]          # ~40s runtime
         ctx["total"] = sum(s["duration"] for s in ctx["scenes"])
         text, verdict = qc.build_report(ctx)
-        check("under 2 min" in text, "short runtimes are flagged")
+        check("is under 120s" in text, "short runtimes are flagged")
+
+        # a dialogue episode is short and punchy by design: same 40s runtime,
+        # same fast lines, no warnings
+        ctx["format"] = "dialogue"
+        text, _ = qc.build_report(ctx)
+        check("is under" not in text, "a dialogue episode is not flagged as short")
+        fast = synthetic_ctx(tmp, wpm=260)
+        fast["format"] = "dialogue"
+        text, _ = qc.build_report(fast)
+        check("is fast" not in text and "not enforced" in text,
+              "dialogue pacing is reported but not enforced")
 
         ctx = synthetic_ctx(tmp, wpm=140)
         ctx["chapters"] = 2

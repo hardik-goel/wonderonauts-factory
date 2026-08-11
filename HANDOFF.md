@@ -176,6 +176,11 @@ Folders whose name starts with `_` are ignored by `--check` and `--all`.
   share of the measured narration. Word-level timing would need a forced
   aligner; sentence cues read better for young viewers anyway. The Short's
   burned-in cards use the same sentence cues.
+- **Phoneme lip-sync** — the dad-joke mode gives each dog its own voice and
+  opens the muzzle of whoever has the line, but that is a per-*line* mouth
+  state, not lip-sync. One still per scene means there is no frame-by-frame
+  mouth to animate; real lip-sync needs the frame-sequence renderer below plus a
+  forced aligner to get phoneme timings out of the TTS audio.
 - **Animated scenes** — the pipeline is stills + Ken Burns. Real animation would
   mean rendering frame sequences from the toolkit; the primitives are already
   parameterized for it (`rotate`, `wobble`, `phase`), so it is a natural next

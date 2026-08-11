@@ -175,6 +175,11 @@ def load_project(project: str):
 
 WORDS_MIN, WORDS_MAX = 20, 80          # per scene; 35-55 is the sweet spot
 
+# A two-hander dialogue is a different animal: "Why not?" is a complete beat and
+# a 40-word joke line is a bad one. An episode declares format="dialogue" in its
+# video.json to be linted against these bounds instead.
+DIALOGUE_WORDS_MIN, DIALOGUE_WORDS_MAX = 2, 45
+
 
 def validate_config(cfg: dict, proj: str) -> list:
     """Lint one video.json. Returns a list of human-readable problems.
@@ -225,6 +230,12 @@ def validate_config(cfg: dict, proj: str) -> list:
     if out_of_range:
         bad.append(f"shorts_scenes out of range for {n} scenes: {out_of_range}")
 
+    fmt = cfg.get("format", "explainer")
+    if fmt not in ("explainer", "dialogue"):
+        bad.append(f"format {fmt!r} is unknown (explainer | dialogue)")
+    w_min, w_max = ((DIALOGUE_WORDS_MIN, DIALOGUE_WORDS_MAX) if fmt == "dialogue"
+                    else (WORDS_MIN, WORDS_MAX))
+
     images = []
     for i, s in enumerate(scenes, 1):
         if not s.get("image"):
@@ -240,9 +251,9 @@ def validate_config(cfg: dict, proj: str) -> list:
             bad.append(f"scene {i}: no narration")
             continue
         words = len(re.findall(r"[\w'’\-]+", text))
-        if not (WORDS_MIN <= words <= WORDS_MAX):
+        if not (w_min <= words <= w_max):
             bad.append(f"scene {i}: {words} words of narration "
-                       f"(want {WORDS_MIN}-{WORDS_MAX})")
+                       f"(want {w_min}-{w_max})")
         if s.get("sfx") and s["sfx"] not in VALID_SFX:
             bad.append(f"scene {i}: unknown sfx {s['sfx']!r} (use {list(VALID_SFX)})")
     dupes = {p for p in images if images.count(p) > 1}
@@ -876,6 +887,7 @@ def write_manifest(path: str, cfg: dict, scenes, opts, artifacts: dict,
             "sfx": s.get("sfx"),
             "chapter": s.get("chapter"),
             "duration": round(s["duration"], 3),
+            "voice": s.get("voice"),
             "narration_sha256": hashlib.sha256(s["narration"].encode("utf-8")).hexdigest(),
             "narration_chars": len(s["narration"]),
         } for s in scenes],
@@ -946,9 +958,16 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
         if not text:
             raise BuildError(f"scene {i} has no '{nkey}' text")
         mp3 = os.path.join(audio_dir, f"scene_{i:02d}.mp3")
-        if narrate(text, voice, rate, mp3, force=force):
+        # A scene may override the voice and rate. That is what lets a
+        # two-character dialogue give each character its own voice instead of
+        # one narrator reading both parts. The TTS cache key already includes
+        # both, so changing one scene's voice re-synthesizes only that scene.
+        scene_voice = s.get("voice") or voice
+        scene_rate = s.get("rate") or rate
+        if narrate(text, scene_voice, scene_rate, mp3, force=force):
             n_tts += 1
-            print(f"  tts   scene {i:02d}")
+            print(f"  tts   scene {i:02d}"
+                  + (f"  ({scene_voice})" if scene_voice != voice else ""))
         # quantize to a whole frame: the clip is encoded as exactly this many
         # frames, so captions and chapters line up with the video instead of
         # drifting a few milliseconds per scene
@@ -959,6 +978,7 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
         scenes.append({
             "i": i, "image": s["image"], "narration": text, "chapter": s.get("chapter"),
             "sfx": sfx_name, "mp3": mp3, "duration": dur, "pad": SCENE_PAD,
+            "voice": scene_voice,
         })
     print(f"  tts   {n_tts} generated, {len(scenes) - n_tts} cached")
 
@@ -1112,6 +1132,7 @@ def build(project: str, shorts=False, preview=False, lang=None, voice=None,
         "thumbnails": [ta, tb], "chapters": n_chapters, "short": short_path,
         "short_cues": len(scues) if scues else 0,
         "loudnorm": loudnorm, "target_lufs": LOUDNESS_I,
+        "format": cfg.get("format", "explainer"),
     }, qc_path)
     artifacts["qc"] = qc_path
 
