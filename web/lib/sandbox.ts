@@ -54,10 +54,15 @@ export function newJobId(slug: string): string {
 /**
  * Create a sandbox, install the draft, and kick off the build.
  * Returns as soon as the build process is running.
+ *
+ * A `draft` with no `videoJson` is a bundled episode: its script and scene art
+ * are already committed in the repo the sandbox cloned, so nothing is written
+ * and the factory just builds what is there.
  */
-export async function startRender(draft: Draft): Promise<Job> {
+export async function startRender(draft: Draft | BundledEpisode): Promise<Job> {
   const id = newJobId(draft.slug);
   const projectDir = `projects/${draft.slug}`;
+  const bundled = !("videoJson" in draft) || !draft.videoJson;
 
   // A prepared snapshot (ffmpeg + python deps already installed) and a cold
   // git clone are separate parameter shapes in the SDK, not one field.
@@ -77,29 +82,30 @@ export async function startRender(draft: Draft): Promise<Job> {
   const job: Job = {
     id,
     slug: draft.slug,
-    title: draft.videoJson.title,
+    title: draft.title ?? ("videoJson" in draft ? draft.videoJson?.title : "") ?? draft.slug,
     status: "starting",
     createdAt: new Date().toISOString(),
     artifacts: [],
   };
 
-  await sandbox.mkDir(`${projectDir}/frames`);
-  await sandbox.writeFiles([
-    {
-      path: `${projectDir}/video.json`,
-      content: Buffer.from(JSON.stringify(draft.videoJson, null, 2) + "\n"),
-    },
-    {
-      path: `${projectDir}/render_scenes.py`,
-      content: Buffer.from(draft.renderScenes),
-    },
+  const files: { path: string; content: Buffer; mode?: number }[] = [
     { path: "job.json", content: Buffer.from(JSON.stringify(job, null, 2)) },
-    {
-      path: "build.sh",
-      content: Buffer.from(buildScript(projectDir)),
-      mode: 0o755,
-    },
-  ]);
+    { path: "build.sh", content: Buffer.from(buildScript(projectDir)), mode: 0o755 },
+  ];
+
+  if (!bundled) {
+    const d = draft as Draft;
+    await sandbox.mkDir(`${projectDir}/frames`);
+    files.push(
+      {
+        path: `${projectDir}/video.json`,
+        content: Buffer.from(JSON.stringify(d.videoJson, null, 2) + "\n"),
+      },
+      { path: `${projectDir}/render_scenes.py`, content: Buffer.from(d.renderScenes) },
+    );
+  }
+
+  await sandbox.writeFiles(files);
 
   // Detached: the build outlives this request. Everything it prints lands in
   // job.log; job.exit appearing is the completion signal.
@@ -146,6 +152,9 @@ async function readText(
   const buf = await sandbox.readFileToBuffer({ path, cwd: ROOT });
   return buf ? buf.toString("utf8") : null;
 }
+
+/** A bundled episode: everything it needs is already committed in the repo. */
+export type BundledEpisode = { slug: string; title: string; videoJson?: undefined };
 
 export type JobView = Job & { log: string };
 

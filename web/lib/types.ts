@@ -23,6 +23,8 @@ export type VideoConfig = {
 
 export type Draft = {
   slug: string;
+  /** Present on bundled episodes; otherwise taken from videoJson.title. */
+  title?: string;
   videoJson: VideoConfig;
   renderScenes: string;
   /** Where the research came from, for the UI to show provenance. */

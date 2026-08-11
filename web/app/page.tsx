@@ -5,6 +5,14 @@ import type { Draft, Job } from "@/lib/types";
 
 type JobView = Job & { log: string };
 type Phase = "idle" | "writing" | "review" | "rendering" | "done" | "failed";
+type Mode = "ai" | "write" | "bundled";
+
+type Capabilities = {
+  ai: boolean;
+  props: string[];
+  looks: readonly string[];
+  presets: { slug: string; title: string; blurb: string }[];
+};
 
 const EXAMPLES = [
   "Why do magnets stick together?",
@@ -13,29 +21,50 @@ const EXAMPLES = [
   "Why does the Moon change shape?",
 ];
 
+const BLANK_SCENES = [
+  "Blast off!", "The big question", "Not what you think", "Secret one",
+  "A closer look", "Secret two", "Try it yourself", "The numbers",
+  "Bonus wonder", "Mission complete!",
+].map((chapter) => ({ chapter, narration: "" }));
+
 export default function Studio() {
-  const [topic, setTopic] = useState("");
+  const [caps, setCaps] = useState<Capabilities | null>(null);
+  const [mode, setMode] = useState<Mode>("write");
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [job, setJob] = useState<JobView | null>(null);
 
+  useEffect(() => {
+    fetch("/api/capabilities")
+      .then((r) => r.json())
+      .then((c: Capabilities) => {
+        setCaps(c);
+        setMode(c.ai ? "ai" : "write");
+      })
+      .catch(() => setCaps({ ai: false, props: ["rocket"], looks: ["land"], presets: [] }));
+  }, []);
+
   const busy = phase === "writing" || phase === "rendering";
 
-  async function writeScript() {
+  const post = useCallback(async (url: string, body: unknown) => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error ?? "Request failed.");
+    return data;
+  }, []);
+
+  async function makeDraft(url: string, body: unknown) {
     setError(null);
     setDraft(null);
     setJob(null);
     setPhase("writing");
     try {
-      const res = await fetch("/api/draft", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topic }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Script generation failed.");
-      setDraft(data as Draft);
+      setDraft((await post(url, body)) as Draft);
       setPhase("review");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -43,26 +72,17 @@ export default function Studio() {
     }
   }
 
-  async function render() {
-    if (!draft) return;
+  async function render(body: unknown) {
     setError(null);
     setPhase("rendering");
     try {
-      const res = await fetch("/api/render", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(draft),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not start the render.");
-      setJob({ ...(data as Job), log: "" });
+      setJob({ ...((await post("/api/render", body)) as Job), log: "" });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      setPhase("review");
+      setPhase(draft ? "review" : "idle");
     }
   }
 
-  // Poll while a render is in flight.
   const jobId = job?.id;
   useEffect(() => {
     if (phase !== "rendering" || !jobId) return;
@@ -95,59 +115,26 @@ export default function Studio() {
     setError(null);
   }
 
+  const showInput = phase === "idle" || phase === "writing";
+
   return (
     <main className="mx-auto w-full max-w-5xl px-5 py-10 sm:py-14">
-      <Header />
+      <Header aiEnabled={caps?.ai ?? false} />
 
-      <section className="mt-8 rounded-2xl border border-border bg-surface p-5 sm:p-6">
-        <label htmlFor="topic" className="block text-sm font-medium text-muted">
-          A question a child would ask — or a YouTube link to research
-        </label>
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <input
-            id="topic"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && topic.trim() && !busy) void writeScript();
-            }}
-            placeholder="Why is the sea salty?"
-            disabled={busy}
-            className="min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-4 py-3 text-base
-                       outline-none placeholder:text-muted/60 focus:border-sky disabled:opacity-60"
-          />
-          <button
-            onClick={() => void writeScript()}
-            disabled={!topic.trim() || busy}
-            className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-ink
-                       transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {phase === "writing" ? "Writing…" : "Write the script"}
-          </button>
-        </div>
-
-        {phase === "idle" && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {EXAMPLES.map((e) => (
-              <button
-                key={e}
-                onClick={() => setTopic(e)}
-                className="rounded-full border border-border px-3 py-1.5 text-xs text-muted
-                           transition hover:border-sky hover:text-foreground"
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {phase === "writing" && (
-          <p className="mt-4 text-sm text-muted">
-            Researching and writing ten scenes plus the scene art. This takes a
-            minute or two.
-          </p>
-        )}
-      </section>
+      {showInput && caps && (
+        <>
+          <ModeTabs mode={mode} setMode={setMode} caps={caps} busy={busy} />
+          {mode === "ai" && (
+            <AiPanel busy={busy} phase={phase} onSubmit={(topic) => void makeDraft("/api/draft", { topic })} />
+          )}
+          {mode === "write" && (
+            <WritePanel caps={caps} busy={busy} onSubmit={(body) => void makeDraft("/api/scaffold", body)} />
+          )}
+          {mode === "bundled" && (
+            <BundledPanel caps={caps} busy={busy} onRender={(preset) => void render({ preset })} />
+          )}
+        </>
+      )}
 
       {error && (
         <p className="mt-5 rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">
@@ -156,10 +143,10 @@ export default function Studio() {
       )}
 
       {draft && phase === "review" && (
-        <DraftReview draft={draft} onChange={setDraft} onRender={() => void render()} />
+        <DraftReview draft={draft} onChange={setDraft} onRender={() => void render(draft)} onBack={reset} />
       )}
 
-      {job && phase !== "review" && phase !== "idle" && (
+      {job && (phase === "rendering" || phase === "done" || phase === "failed") && (
         <RenderPanel job={job} phase={phase} onReset={reset} />
       )}
 
@@ -168,24 +155,283 @@ export default function Studio() {
   );
 }
 
-function Header() {
+function Header({ aiEnabled }: { aiEnabled: boolean }) {
   return (
     <header>
-      <div className="flex items-center gap-3">
-        <span aria-hidden className="text-3xl">
-          🚀
-        </span>
+      <div className="flex flex-wrap items-center gap-3">
+        <span aria-hidden className="text-3xl">🚀</span>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Wonder-o-nauts Studio
         </h1>
+        <span
+          className={`rounded-full border px-2.5 py-1 text-[11px] ${
+            aiEnabled
+              ? "border-sky/40 bg-sky/10 text-sky"
+              : "border-good/40 bg-good/10 text-good"
+          }`}
+        >
+          {aiEnabled ? "AI writing enabled" : "no API key — keyless mode"}
+        </span>
       </div>
       <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-muted">
-        Type a question. Get a finished episode: 1080p video with motion and
-        music, a vertical Short with burned-in captions, subtitles, chapters,
-        two thumbnails and a QC report. Every frame is drawn from code, every
-        note synthesised — nothing is downloaded or licensed.
+        A finished episode: 1080p video with motion and music, a vertical Short
+        with burned-in captions, subtitles, chapters, two thumbnails and a QC
+        report. Every frame is drawn from code, every note synthesised — nothing
+        is downloaded or licensed.
       </p>
     </header>
+  );
+}
+
+function ModeTabs({
+  mode,
+  setMode,
+  caps,
+  busy,
+}: {
+  mode: Mode;
+  setMode: (m: Mode) => void;
+  caps: Capabilities;
+  busy: boolean;
+}) {
+  const tabs: { id: Mode; label: string; hint: string; disabled?: boolean }[] = [
+    {
+      id: "ai",
+      label: "Write it for me",
+      hint: caps.ai ? "Claude drafts the script" : "needs ANTHROPIC_API_KEY",
+      disabled: !caps.ai,
+    },
+    { id: "write", label: "I'll write it", hint: "no API key needed" },
+    { id: "bundled", label: "Render a sample", hint: "zero typing" },
+  ];
+
+  return (
+    <div className="mt-8 flex flex-wrap gap-2">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => !t.disabled && setMode(t.id)}
+          disabled={t.disabled || busy}
+          title={t.disabled ? "Set ANTHROPIC_API_KEY to enable this" : undefined}
+          className={`rounded-xl border px-4 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
+            mode === t.id
+              ? "border-accent bg-accent/10"
+              : "border-border hover:border-sky"
+          }`}
+        >
+          <span className="block text-sm font-medium">{t.label}</span>
+          <span className="block text-xs text-muted">{t.hint}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AiPanel({
+  busy,
+  phase,
+  onSubmit,
+}: {
+  busy: boolean;
+  phase: Phase;
+  onSubmit: (topic: string) => void;
+}) {
+  const [topic, setTopic] = useState("");
+  return (
+    <section className="mt-4 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+      <label htmlFor="topic" className="block text-sm font-medium text-muted">
+        A question a child would ask — or a YouTube link to research
+      </label>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+        <input
+          id="topic"
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && topic.trim() && !busy) onSubmit(topic);
+          }}
+          placeholder="Why is the sea salty?"
+          disabled={busy}
+          className="min-w-0 flex-1 rounded-xl border border-border bg-surface-2 px-4 py-3 text-base
+                     outline-none placeholder:text-muted/60 focus:border-sky disabled:opacity-60"
+        />
+        <button
+          onClick={() => onSubmit(topic)}
+          disabled={!topic.trim() || busy}
+          className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-ink transition
+                     hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {phase === "writing" ? "Writing…" : "Write the script"}
+        </button>
+      </div>
+      {phase === "idle" && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {EXAMPLES.map((e) => (
+            <button
+              key={e}
+              onClick={() => setTopic(e)}
+              className="rounded-full border border-border px-3 py-1.5 text-xs text-muted
+                         transition hover:border-sky hover:text-foreground"
+            >
+              {e}
+            </button>
+          ))}
+        </div>
+      )}
+      {phase === "writing" && (
+        <p className="mt-4 text-sm text-muted">
+          Researching and writing ten scenes plus the scene art. A minute or two.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function WritePanel({
+  caps,
+  busy,
+  onSubmit,
+}: {
+  caps: Capabilities;
+  busy: boolean;
+  onSubmit: (body: unknown) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [prop, setProp] = useState("rocket");
+  const [look, setLook] = useState("land");
+  const [scenes, setScenes] = useState(BLANK_SCENES);
+
+  const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+  const written = scenes.filter((s) => s.narration.trim()).length;
+
+  const update = (i: number, patch: Partial<(typeof scenes)[number]>) =>
+    setScenes(scenes.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+
+  return (
+    <section className="mt-4 space-y-4">
+      <div className="rounded-2xl border border-border bg-surface p-5 sm:p-6">
+        <p className="text-sm text-muted">
+          You write the narration; the studio builds the scene art, voice, music,
+          captions, thumbnails and the upload sheet. Aim for{" "}
+          <strong className="text-foreground">35–55 words</strong> a scene — that
+          lands around four minutes.
+        </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Why do magnets stick together?"
+            disabled={busy}
+            className="min-w-0 rounded-xl border border-border bg-surface-2 px-4 py-3
+                       outline-none placeholder:text-muted/60 focus:border-sky"
+          />
+          <select
+            value={prop}
+            onChange={(e) => setProp(e.target.value)}
+            disabled={busy}
+            className="rounded-xl border border-border bg-surface-2 px-3 py-3 text-sm outline-none focus:border-sky"
+          >
+            {caps.props.map((p) => (
+              <option key={p} value={p}>{p.replace(/_/g, " ")}</option>
+            ))}
+          </select>
+          <select
+            value={look}
+            onChange={(e) => setLook(e.target.value)}
+            disabled={busy}
+            className="rounded-xl border border-border bg-surface-2 px-3 py-3 text-sm outline-none focus:border-sky"
+          >
+            {caps.looks.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {scenes.map((s, i) => {
+          const w = words(s.narration);
+          const off = w > 0 && (w < 20 || w > 80);
+          return (
+            <div key={i} className="rounded-xl border border-border bg-surface p-4">
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <span className="rounded-md bg-surface-2 px-2 py-1 font-mono text-muted">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <input
+                  value={s.chapter}
+                  onChange={(e) => update(i, { chapter: e.target.value })}
+                  placeholder="Chapter label"
+                  className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs outline-none focus:border-sky"
+                />
+                <span className={`ml-auto ${off ? "text-bad" : "text-muted"}`}>
+                  {w} words
+                </span>
+              </div>
+              <textarea
+                value={s.narration}
+                onChange={(e) => update(i, { narration: e.target.value })}
+                rows={2}
+                placeholder={
+                  i === 0
+                    ? "Hello, Wonder-o-nauts! Today we are finding out…"
+                    : "What the narrator says in this scene."
+                }
+                className="mt-3 w-full resize-y rounded-lg border border-border bg-surface-2 px-3 py-2
+                           text-sm leading-relaxed outline-none placeholder:text-muted/50 focus:border-sky"
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <button
+        onClick={() => onSubmit({ title, scenes, prop, look })}
+        disabled={busy || !title.trim() || written < 3}
+        className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-ink transition
+                   hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Build the episode ({written} scene{written === 1 ? "" : "s"} written)
+      </button>
+    </section>
+  );
+}
+
+function BundledPanel({
+  caps,
+  busy,
+  onRender,
+}: {
+  caps: Capabilities;
+  busy: boolean;
+  onRender: (slug: string) => void;
+}) {
+  return (
+    <section className="mt-4 rounded-2xl border border-border bg-surface p-5 sm:p-6">
+      <p className="text-sm text-muted">
+        Five finished episodes ship with the repo. Rendering one needs no API key
+        and no typing — it proves the whole pipeline end to end in about six
+        minutes.
+      </p>
+      <div className="mt-4 space-y-2">
+        {caps.presets.map((p) => (
+          <button
+            key={p.slug}
+            onClick={() => onRender(p.slug)}
+            disabled={busy}
+            className="flex w-full items-center gap-4 rounded-xl border border-border bg-surface-2 p-4
+                       text-left transition hover:border-sky disabled:opacity-40"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">{p.title}</span>
+              <span className="block text-xs text-muted">{p.blurb}</span>
+            </span>
+            <span className="ml-auto shrink-0 text-xs text-sky">Render →</span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -193,10 +439,12 @@ function DraftReview({
   draft,
   onChange,
   onRender,
+  onBack,
 }: {
   draft: Draft;
   onChange: (d: Draft) => void;
   onRender: () => void;
+  onBack: () => void;
 }) {
   const cfg = draft.videoJson;
   const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
@@ -219,21 +467,29 @@ function DraftReview({
               {draft.source.kind === "youtube"
                 ? draft.source.transcriptChars > 0
                   ? `researched from “${draft.source.label}”`
-                  : `topic taken from “${draft.source.label}” (no transcript available)`
+                  : `topic from “${draft.source.label}” (no transcript available)`
                 : "written from the topic"}
             </p>
           </div>
-          <button
-            onClick={onRender}
-            className="shrink-0 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-ink
-                       transition hover:brightness-110"
-          >
-            Render episode
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              onClick={onBack}
+              className="rounded-xl border border-border px-4 py-3 text-sm text-muted
+                         transition hover:border-sky hover:text-foreground"
+            >
+              Back
+            </button>
+            <button
+              onClick={onRender}
+              className="rounded-xl bg-accent px-5 py-3 font-semibold text-accent-ink transition hover:brightness-110"
+            >
+              Render episode
+            </button>
+          </div>
         </div>
         <p className="mt-4 text-sm text-muted">
-          Edit any narration before rendering — this is the moment to fix a fact
-          or soften a phrase. Rendering takes roughly six minutes.
+          Edit any narration before rendering — this is the moment to fix a fact.
+          Rendering takes roughly six minutes.
         </p>
       </div>
 
@@ -252,9 +508,7 @@ function DraftReview({
                 {cfg.shorts_scenes?.includes(i + 1) && (
                   <span className="rounded-md bg-sky/20 px-2 py-1 text-sky">in the Short</span>
                 )}
-                <span className={`ml-auto ${off ? "text-bad" : "text-muted"}`}>
-                  {w} words
-                </span>
+                <span className={`ml-auto ${off ? "text-bad" : "text-muted"}`}>{w} words</span>
               </div>
               <textarea
                 value={s.narration}
@@ -270,21 +524,10 @@ function DraftReview({
 
       <details className="rounded-xl border border-border bg-surface p-4">
         <summary className="cursor-pointer text-sm font-medium">
-          Scene art (render_scenes.py)
+          Scene art (render_scenes.py) — edit this file after downloading to art-direct it
         </summary>
         <pre className="log mt-3 max-h-96 overflow-auto rounded-lg bg-surface-2 p-3 text-muted">
           {draft.renderScenes}
-        </pre>
-      </details>
-
-      <details className="rounded-xl border border-border bg-surface p-4">
-        <summary className="cursor-pointer text-sm font-medium">
-          Description &amp; tags
-        </summary>
-        <pre className="log mt-3 overflow-auto rounded-lg bg-surface-2 p-3 text-muted">
-          {cfg.description}
-          {"\n\n"}
-          {cfg.tags}
         </pre>
       </details>
     </section>
@@ -335,7 +578,7 @@ function RenderPanel({
         </div>
         <p className="mt-2 text-sm text-muted">
           {phase === "rendering" &&
-            "Drawing frames, synthesising narration and music, encoding ten scenes, mastering to −14 LUFS."}
+            "Drawing frames, synthesising narration and music, encoding scenes, mastering to −14 LUFS."}
           {phase === "done" && (
             <>
               Finished. QC says{" "}
@@ -362,23 +605,17 @@ function RenderPanel({
           {has("short.mp4") && (
             <Card title="Short (captions burned in)">
               {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video
-                src={art("short.mp4")}
-                controls
-                className="mx-auto max-h-[420px] rounded-lg bg-black"
-              />
+              <video src={art("short.mp4")} controls className="mx-auto max-h-[420px] rounded-lg bg-black" />
               <Download href={art("short.mp4")} name="short.mp4" />
             </Card>
           )}
           {(has("thumbnail_a.jpg") || has("thumbnail_b.jpg")) && (
             <Card title="Thumbnails (A/B)">
               <div className="grid grid-cols-2 gap-2">
-                {(["thumbnail_a.jpg", "thumbnail_b.jpg"] as const)
-                  .filter(has)
-                  .map((n) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={n} src={art(n)} alt={n} className="w-full rounded-lg" />
-                  ))}
+                {(["thumbnail_a.jpg", "thumbnail_b.jpg"] as const).filter(has).map((n) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={n} src={art(n)} alt={n} className="w-full rounded-lg" />
+                ))}
               </div>
             </Card>
           )}
@@ -408,7 +645,10 @@ function RenderPanel({
       )}
 
       {job.qc && (
-        <details open={phase === "done" && !qcPassed} className="rounded-xl border border-border bg-surface p-4">
+        <details
+          open={phase === "done" && !qcPassed}
+          className="rounded-xl border border-border bg-surface p-4"
+        >
           <summary className="cursor-pointer text-sm font-medium">QC report</summary>
           <pre className="log mt-3 max-h-80 overflow-auto rounded-lg bg-surface-2 p-3 text-muted">
             {job.qc}
@@ -476,9 +716,15 @@ function Footer() {
   return (
     <footer className="mt-14 border-t border-border pt-6 text-xs leading-relaxed text-muted">
       <p>
+        <strong className="text-foreground">No API key required.</strong> Writing
+        the words is the only step that needs a model — “I’ll write it” and
+        “Render a sample” run entirely without one. Rendering, art, narration,
+        music and captions never call a paid API.
+      </p>
+      <p className="mt-2">
         A YouTube link is used as <strong>research only</strong> — the transcript
         informs an original script. No audio, frames or phrasing from the source
-        ends up in the output, which is what keeps every episode copyright-clean.
+        ends up in the output.
       </p>
       <p className="mt-2">
         Rendering runs in an ephemeral Vercel Sandbox. Artifacts stream from that

@@ -1,14 +1,29 @@
 # Wonder-o-nauts Studio
 
-A hosted UI over the factory: type a question (or paste a YouTube link), get a
-finished episode. No terminal required.
+A hosted UI over the factory: get a finished episode without a terminal.
+
+## Three ways in — two of them need no API key
+
+The factory's promise is "no API keys, no accounts". Writing the *words* is the
+one step that needs either a model or a human, so only that step can require a
+key. Everything downstream — scene art, narration, music, captions, thumbnails,
+encoding, mastering — never calls a paid API.
+
+| Mode | Needs a key? | What you supply |
+|---|---|---|
+| **Write it for me** | yes — `ANTHROPIC_API_KEY` | a question, or a YouTube link to research |
+| **I'll write it** | **no** | the narration; the studio generates the scene art |
+| **Render a sample** | **no** | nothing — builds one of the five bundled episodes |
+
+The UI reads `/api/capabilities` on load. With no key set, the AI tab is
+disabled with the reason shown and "I'll write it" is selected by default — no
+dead-end error.
 
 ```
-topic / YouTube link
+                    ┌── /api/draft ─────► Claude writes the script   (key)
+topic / link / words ┼── /api/scaffold ──► templated script + art    (keyless)
+                    └── preset ─────────► already in the repo        (keyless)
         │
-        ▼
-  /api/draft ──────────► Claude writes video.json + render_scenes.py
-        │                (transcript is research only — output stays original)
         ▼
   you review & edit the narration
         │
@@ -18,6 +33,18 @@ topic / YouTube link
         ▼
   /api/jobs/[id] ──────► poll status + log, then stream artifacts
 ```
+
+### What the keyless art looks like
+
+`lib/scaffold.ts` composes each frame from real toolkit primitives, rotating
+through four layouts so ten scenes don't look identical. It is deliberately
+template-driven rather than bespoke: a watchable episode, not a designed one.
+The generated `render_scenes.py` is shown in the review step and is ordinary
+Python — download it and art-direct it by hand if you want more.
+
+`pnpm exec tsx scripts/verify-scaffold.ts` renders every prop and look through
+the real toolkit and lints the result, because a bad primitive call in generated
+code would otherwise first surface a minute into someone's build.
 
 ## Why the split
 

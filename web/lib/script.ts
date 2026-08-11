@@ -2,6 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { TOOLKIT_REFERENCE } from "./toolkit-reference";
 import type { Draft, VideoConfig } from "./types";
 import type { Research } from "./youtube";
+import { slugify } from "./slug";
+
+export { slugify };
 
 const anthropic = new Anthropic();
 
@@ -240,16 +243,6 @@ export async function writeEpisode(
   };
 }
 
-export function slugify(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .replace(/-{2,}/g, "-")
-      .slice(0, 60) || "new-episode"
-  );
-}
 
 function hash(s: string): number {
   let h = 0;
