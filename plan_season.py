@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -94,17 +95,21 @@ def cmd_report(a=None):
         for d in sorted(os.listdir(os.path.join(HERE, "projects")))
         if not d.startswith("_")]
     print(f"\n  {data.get('season', 'Season')} -- build report")
-    print(f"  {'slug':<28} {'status':<10} {'QC':<6} {'runtime':>8}  built")
-    print("  " + "-" * 84)
+    print(f"  {'slug':<28} {'status':<10} {'QC':<6} {'runtime':>8} {'loudness':>9}  built")
+    print("  " + "-" * 96)
     for e in eps:
         out = os.path.join(HERE, "projects", e["slug"], "output")
         qc_path = os.path.join(out, "qc_report.txt")
         man_path = os.path.join(out, "build_manifest.json")
-        verdict, runtime, built = "-", "-", "not built"
+        verdict, runtime, built, loud = "-", "-", "not built", "-"
         if os.path.exists(qc_path):
             with open(qc_path, encoding="utf-8") as f:
-                head = f.read(400)
+                head = f.read(1200)
             verdict = "PASS" if "QC PASS" in head else ("WARN" if "QC WARN" in head else "?")
+            # an episode that shipped un-normalized is the one defect you would
+            # never spot in a table of PASS verdicts
+            m = re.search(r"programme\s+(-?\d+(?:\.\d+)?) LUFS", head)
+            loud = f"{m.group(1)} LU" if m else "unnormed"
         if os.path.exists(man_path):
             with open(man_path, encoding="utf-8") as f:
                 man = json.load(f)
@@ -115,9 +120,9 @@ def cmd_report(a=None):
                                "thumbnail_a.jpg", "thumbnail_b.jpg")
                    if not os.path.exists(os.path.join(out, n))]
         print(f"  {e['slug']:<28} {e.get('status', '?'):<10} {verdict:<6} "
-              f"{runtime:>8}  {built}"
+              f"{runtime:>8} {loud:>9}  {built}"
               + (f"   MISSING: {', '.join(missing)}" if missing else ""))
-    print("  " + "-" * 84)
+    print("  " + "-" * 96)
     print("  QC verdicts come from each episode's last build -- rebuild with "
           "python3 factory.py --all\n")
     return 0

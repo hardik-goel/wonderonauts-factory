@@ -130,7 +130,10 @@ def scaffold(slug: str, title: str | None = None, n_scenes: int = 10,
         # stable across machines and runs -- Python's str hash is randomized
         "music_seed": int(hashlib.sha256(slug.encode()).hexdigest()[:8], 16) % 97 + 1,
         "bgm_vol": 0.13,
-        "shorts_scenes": [2, min(6, n_scenes), min(8, n_scenes)],
+        # distinct scenes, always in range: min() alone produced [2, 3, 3] for a
+        # 3-scene episode, and the Short then played the same clip twice
+        "shorts_scenes": sorted({min(i, n_scenes)
+                                 for i in (2, 6, 8) if n_scenes >= 1})[:n_scenes],
         "scenes": [{
             "image": f"frames/scene_{i:02d}.png",
             "chapter": "Blast off!" if i == 1 else (

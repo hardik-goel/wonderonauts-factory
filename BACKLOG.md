@@ -61,12 +61,12 @@ Rules of thumb learned on episodes 1-3:
 | `how-do-planes-fly` | How do planes stay up? | 2 | `plane`, `paper_plane`, `airfoil`, `wind_streaks`, `force_arrow` |
 | `why-do-we-have-seasons` | Why hot then cold? | 3 | `planet`, `orbit_ring`, `light_beam` |
 | `where-does-rain-come-from` | Where does rain come from? | 4 | `raindrop`, `rainfall`, `puddle`, `cycle_arrow` |
+| `why-is-the-ocean-salty` | Why is the sea salty? | 5 | `sea`, `wave`, `salt_crystal`, `mountain`, `river` |
 
 ## Queued
 
 | Slug | Question | Core idea | New primitives |
 |---|---|---|---|
-| `why-is-the-ocean-salty` | Why is the sea salty? | Rivers carry dissolved rock to the sea | `wave`, `salt_crystal` |
 | `how-do-magnets-work` | Why do magnets stick? | Aligned magnetic domains, field lines | `magnet`, `field_line` |
 | `why-do-we-need-sleep` | Why must we sleep? | Brain sorts and stores the day | `brain`, `zzz` |
 | `what-are-clouds-made-of` | What are clouds made of? | Trillions of tiny water droplets | reuse `cloud`, `molecule` |

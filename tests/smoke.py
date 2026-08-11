@@ -70,10 +70,15 @@ def fake_narration(project: str):
         words = len(re.findall(r"[\w'’\-]+", text))
         dur = max(2.0, round(words / WPM * 60.0, 2))
         mp3 = os.path.join(audio, f"scene_{i:02d}.mp3")
+        # A bare sine is a pathological input for the loudness stage: it has no
+        # crest factor, so loudnorm's limiter cannot hold the true-peak target
+        # and QC correctly-but-uselessly warns about clipping on every CI run.
+        # The tremolo gives the tone a speech-like envelope, which is what the
+        # real pipeline is actually tuned for.
         subprocess.run(
             ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
              "-f", "lavfi", "-i", f"sine=frequency={200 + i * 40}:duration={dur}",
-             "-af", "volume=0.22", "-ar", "44100", "-ac", "1",
+             "-af", "tremolo=f=4.5:d=0.85,volume=0.22", "-ar", "44100", "-ac", "1",
              "-c:a", "libmp3lame", "-b:a", "128k", mp3],
             check=True)
         with open(mp3 + ".stamp", "w", encoding="utf-8") as f:
@@ -96,9 +101,9 @@ def main(argv):
     result = factory.build(proj, shorts=True)
     out = os.path.join(proj, "output")
 
-    expected = ["final.mp4", "short.mp4", "captions.srt", "thumbnail_a.jpg",
-                "thumbnail_b.jpg", "metadata.txt", "qc_report.txt",
-                "build_manifest.json"]
+    expected = ["final.mp4", "short.mp4", "captions.srt", "short_captions.srt",
+                "thumbnail_a.jpg", "thumbnail_b.jpg", "metadata.txt",
+                "qc_report.txt", "build_manifest.json"]
     for name in expected:
         p = os.path.join(out, name)
         check(os.path.exists(p) and os.path.getsize(p) > 0, f"artifact {name}",
@@ -115,6 +120,32 @@ def main(argv):
     if os.path.exists(short):
         w, h = factory.ffprobe_size(short)
         check((w, h) == (1080, 1920), "short.mp4 is 1080x1920", f"{w}x{h}")
+        # the Short must be exactly the picked scenes, not the whole episode
+        picked = [i for i in cfg.get("shorts_scenes", [])
+                  if 1 <= i <= len(cfg["scenes"])]
+        want = sum(s["duration"] for s in result["scenes"] if s["i"] in picked)
+        got = factory.ffprobe_duration(short)
+        check(abs(got - want) < 0.5, "short.mp4 runs for its picked scenes only",
+              f"{got:.1f}s vs {want:.1f}s")
+        scues = factory.short_cues(result["scenes"], picked)
+        check(len(scues) > 0, "the Short has caption cues to burn in",
+              f"{len(scues)} cues")
+        check(max(c[1] for c in scues) <= got + 0.5,
+              "no burned caption outlives the Short")
+
+    # Loudness: the whole point is that a quiet master cannot ship silently.
+    lufs, tp = None, None
+    if os.path.exists(final):
+        from engine import qc as qc_mod
+        lufs, tp = qc_mod.measure_lufs(final)
+        check(lufs is not None, "integrated loudness is measurable",
+              f"{lufs} LUFS")
+        if lufs is not None:
+            check(abs(lufs - factory.LOUDNESS_I) <= qc_mod.LUFS_TOLERANCE,
+                  f"final.mp4 lands on the {factory.LOUDNESS_I} LUFS target",
+                  f"{lufs:.1f} LUFS")
+        if tp is not None:
+            check(tp <= 0.0, "true peak stays under 0 dBTP", f"{tp:.1f} dBTP")
 
     srt = os.path.join(out, "captions.srt")
     if os.path.exists(srt):
@@ -134,6 +165,12 @@ def main(argv):
     check(man["factory_version"] == factory.VERSION, "manifest records the version",
           man["factory_version"])
     check(len(man["scenes"]) == len(cfg["scenes"]), "manifest lists every scene")
+    check(man.get("loudnorm") is True and man.get("target_lufs") == factory.LOUDNESS_I,
+          "manifest records the loudness target", str(man.get("target_lufs")))
+    check(man.get("short_captions_burned") is True,
+          "manifest records that the Short carries burned-in captions")
+    check(man.get("lint_issues") == [], "manifest records a clean lint",
+          str(man.get("lint_issues"))[:80])
 
     for p in (os.path.join(out, "thumbnail_a.jpg"), os.path.join(out, "thumbnail_b.jpg")):
         if os.path.exists(p):

@@ -9,6 +9,9 @@ projects/*/frames/contact_sheet.jpg
 # Delete the next line if you would rather version the rendered art.
 projects/*/frames/*.png
 
+# `python3 -m engine.captions "..."` demo output
+caption_demo.png
+
 __pycache__/
 *.py[cod]
 .venv/

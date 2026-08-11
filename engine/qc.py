@@ -23,6 +23,31 @@ RUNTIME_MIN, RUNTIME_MAX = 120, 900          # seconds
 MEAN_DB_MIN = -30.0
 MAX_DB_MAX = -1.0
 
+# EBU R128 integrated loudness. YouTube plays back at about -14 LUFS and only
+# ever turns loud uploads DOWN, so anything materially quieter than this just
+# sounds quiet to the viewer forever. The window is deliberately loose: the
+# point is to catch a build that skipped normalization, not to police 0.3 LU.
+LUFS_TARGET = -14.0
+LUFS_TOLERANCE = 2.0
+
+
+def measure_lufs(path: str):
+    """(integrated LUFS, true peak dBTP) via ebur128; (None, None) if it fails."""
+    try:
+        p = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-nostats", "-i", path, "-vn",
+             "-af", "ebur128=peak=true", "-f", "null", "-"],
+            capture_output=True, text=True, timeout=1800)
+    except Exception:
+        return None, None
+    err = p.stderr or ""
+    # the Summary block at the end is the integrated figure for the whole file
+    tail = err[err.rfind("Summary:"):] if "Summary:" in err else ""
+    i = re.search(r"I:\s*(-?\d+(?:\.\d+)?)\s*LUFS", tail)
+    tp = re.search(r"Peak:\s*(-?\d+(?:\.\d+)?)\s*dBFS", tail)
+    return (float(i.group(1)) if i else None,
+            float(tp.group(1)) if tp else None)
+
 
 def measure_loudness(path: str):
     """(mean_db, max_db) via ffmpeg volumedetect; (None, None) if unavailable."""
@@ -127,6 +152,20 @@ def build_report(ctx: dict) -> tuple[str, str]:
         if max_db is not None and max_db > MAX_DB_MAX:
             warns.append(f"peak volume {max_db:.1f} dB risks clipping (above {MAX_DB_MAX} dB)")
 
+    # the loudness that actually decides how loud this sounds on YouTube
+    target = float(ctx.get("target_lufs", LUFS_TARGET))
+    lufs, true_peak = (measure_lufs(ctx["video"]) if ctx.get("loudnorm")
+                       else (None, None))
+    if ctx.get("loudnorm"):
+        if lufs is None:
+            warns.append("could not measure integrated loudness (ebur128 unavailable)")
+        elif abs(lufs - target) > LUFS_TOLERANCE:
+            warns.append(f"integrated loudness {lufs:.1f} LUFS is more than "
+                         f"{LUFS_TOLERANCE} LU from the {target} LUFS target")
+        if true_peak is not None and true_peak > 0.0:
+            warns.append(f"true peak {true_peak:.1f} dBTP is above 0 -- will clip "
+                         "after transcoding")
+
     bounds, t = [], 0.0
     for s in scenes:
         bounds.append((t, t + s["duration"]))
@@ -170,10 +209,18 @@ def build_report(ctx: dict) -> tuple[str, str]:
              f"  ({os.path.getsize(ctx['video'])/1e6:.1f} MB)"
              if os.path.exists(ctx["video"]) else "video        MISSING")
     L.append(f"runtime      {_fmt_ts(total)}  ({total:.1f}s)")
-    L.append(f"streams      video={'yes' if has_v else 'NO'}  "
-             f"audio={'yes' if has_a else 'NO'}")
+    def yn(v):
+        return "yes" if v else ("?" if v is None else "NO")
+
+    L.append(f"streams      video={yn(has_v)}  audio={yn(has_a)}")
     if mean_db is not None:
         L.append(f"loudness     mean {mean_db:.1f} dB / peak {max_db:.1f} dB")
+    if lufs is not None:
+        L.append(f"programme    {lufs:.1f} LUFS integrated"
+                 + (f" / {true_peak:.1f} dBTP true peak" if true_peak is not None else "")
+                 + f"   (target {target} LUFS)")
+    elif not ctx.get("loudnorm"):
+        L.append("programme    loudness normalization was disabled for this build")
     L.append(f"captions     {covered}/{len(scenes)} scenes covered  "
              f"({os.path.basename(ctx['srt'])})")
     L.append(f"chapters     {ctx.get('chapters', 0)}")
@@ -182,7 +229,9 @@ def build_report(ctx: dict) -> tuple[str, str]:
     if ctx.get("short"):
         L.append(f"short        {os.path.basename(ctx['short'])}"
                  + (f"  ({os.path.getsize(ctx['short'])/1e6:.1f} MB)"
-                    if os.path.exists(ctx["short"]) else "  MISSING"))
+                    if os.path.exists(ctx["short"]) else "  MISSING")
+                 + (f", {ctx['short_cues']} burned-in caption cues"
+                    if ctx.get("short_cues") else ", NO burned-in captions"))
     L.append("")
     L.append(f"{'#':>3}  {'dur':>7}  {'words':>6}  {'wpm':>6}  {'flag':<5} chapter")
     L.append("-" * 68)

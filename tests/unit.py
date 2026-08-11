@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import wave
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -320,12 +321,257 @@ def test_toolkit_and_outros():
               f"{slug}: every scene has narration")
 
 
+# --------------------------------------------------------------------------
+# Short captions: cue re-timing, card rendering
+# --------------------------------------------------------------------------
+
+def test_short_cues():
+    scenes = [{"i": 1, "duration": 10.0, "narration": "Aaa bbb. Ccc ddd.",
+               "pad": factory.SCENE_PAD},
+              {"i": 2, "duration": 6.0, "narration": "Two only.",
+               "pad": factory.SCENE_PAD},
+              {"i": 3, "duration": 8.0, "narration": "Three here. And more.",
+               "pad": factory.SCENE_PAD}]
+    full = factory.caption_cues(scenes)
+    check(len(full) == 5, "caption_cues emits one cue per sentence", str(len(full)))
+    check(abs(full[0][0] - factory.NARRATION_OFFSET) < 1e-9,
+          "first cue starts at the narration offset")
+
+    cues = factory.short_cues(scenes, [2, 3])
+    check(len(cues) == 3, "short cues cover only the picked scenes", str(len(cues)))
+    check(abs(cues[0][0] - factory.NARRATION_OFFSET) < 1e-6,
+          "the first picked scene is re-timed to the start of the Short",
+          f"{cues[0][0]:.3f}s")
+    # scene 3's cues must start after scene 2's whole duration, not after
+    # scene 2's position in the *episode*
+    check(abs(cues[1][0] - (6.0 + factory.NARRATION_OFFSET)) < 1e-6,
+          "the second picked scene starts one scene-duration in",
+          f"{cues[1][0]:.3f}s")
+    total = sum(scenes[i - 1]["duration"] for i in (2, 3))
+    check(max(c[1] for c in cues) <= total + 1e-6,
+          "no burned cue runs past the end of the Short")
+
+    # out-of-order and out-of-range picks must not explode or leak scenes
+    check(factory.short_cues(scenes, [3, 1])[0][2].startswith("Three"),
+          "picks are honoured in the order given")
+    check(factory.short_cues(scenes, [99]) == [], "an unknown scene picks nothing")
+
+
+def test_caption_cards():
+    from engine import captions as cap
+
+    with tempfile.TemporaryDirectory() as tmp:
+        short_txt = "Rivers ARE salty."
+        long_txt = ("Sunlight is made of every single colour in the rainbow all "
+                    "mixed together into one bright white beam of light.")
+        a = cap.render_card(short_txt, os.path.join(tmp, "a.png"), video_w=1080)
+        b = cap.render_card(long_txt, os.path.join(tmp, "b.png"), video_w=1080)
+        check(os.path.exists(a.path) and a.w > 0 and a.h > 0, "caption card renders",
+              f"{a.w}x{a.h}")
+        check(a.w <= 1080 and b.w <= 1080, "cards never exceed the video width",
+              f"{a.w} / {b.w}")
+        check(b.h > a.h, "a longer line wraps to a taller card", f"{a.h} -> {b.h}")
+        from PIL import Image
+        with Image.open(b.path) as im:
+            check(im.mode == "RGBA", "cards keep an alpha channel for overlay")
+
+        # a single unbreakable token cannot wrap, so the font has to shrink or
+        # the text paints straight through the side of the card
+        huge = cap.render_card("Supercalifragilisticexpialidociousssssssssssssss"
+                               "ssssssssssssssssssssssssssssss",
+                               os.path.join(tmp, "c.png"), video_w=1080)
+        check(huge.w <= 1080, "an unbreakable word still fits the card",
+              f"{huge.w}px")
+        # non-Latin scripts must pick the Unicode-wide face, not tofu
+        dev = cap.render_card("आसमान नीला क्यों है?", os.path.join(tmp, "d.png"),
+                              video_w=1080)
+        check(dev.w > 0 and dev.w <= 1080, "a Devanagari cue renders a card",
+              f"{dev.w}x{dev.h}")
+        # regression: a two-line card used to creep back up over the video's
+        # own caption banner, because it was anchored by its bottom edge
+        letterbox_bottom = (1920 + 1080 * 9 / 16) / 2      # 1263.75
+        for card in (a, b):
+            y = factory.short_caption_y(card.h)
+            check(y >= letterbox_bottom,
+                  f"a {card.h}px card clears the 16:9 letterbox", str(y))
+            check(y + card.h <= 1920 * factory.SHORT_UI_TOP,
+                  f"a {card.h}px card stays out of the Shorts UI strip",
+                  str(y + card.h))
+        tall = factory.short_caption_y(420)                # 4+ lines, worst case
+        check(tall + 420 <= 1920 * factory.SHORT_UI_TOP,
+              "even an oversized card is pulled up out of the Shorts UI", str(tall))
+
+
+# --------------------------------------------------------------------------
+# video.json linting
+# --------------------------------------------------------------------------
+
+def base_cfg(n=10):
+    return {
+        "title": "T", "description": "D", "tags": "t",
+        "thumbnail_text": "Line one\nTWO", "thumbnail_prop": "rocket",
+        "music_seed": 3, "rate": "+0%", "shorts_scenes": [2, 5, 8],
+        "scenes": [{"image": f"frames/scene_{i:02d}.png", "chapter": f"c{i}",
+                    "sfx": "pop", "narration": " ".join(["word"] * 40)}
+                   for i in range(1, n + 1)],
+    }
+
+
+def test_validate():
+    with tempfile.TemporaryDirectory() as tmp:
+        open(os.path.join(tmp, "render_scenes.py"), "w").write("")
+        check(factory.validate_config(base_cfg(), tmp) == [],
+              "a well-formed video.json lints clean")
+
+        def one(mutate, needle, label):
+            cfg = base_cfg()
+            mutate(cfg)
+            found = factory.validate_config(cfg, tmp)
+            check(any(needle in m for m in found), label,
+                  "; ".join(found)[:90] or "no issues raised")
+
+        one(lambda c: c.update(shorts_scenes=[2, 2, 5]), "repeats", "repeated shorts_scenes")
+        one(lambda c: c.update(shorts_scenes=[2, 99]), "out of range",
+            "out-of-range shorts_scenes")
+        one(lambda c: c.update(thumbnail_prop="banana"), "unknown", "unknown thumbnail_prop")
+        one(lambda c: c.update(thumbnail_bg="lava"), "thumbnail_bg", "unknown thumbnail_bg")
+        one(lambda c: c.update(thumbnail_sky="mauve"), "thumbnail_sky", "unknown thumbnail_sky")
+        one(lambda c: c.update(thumbnail_text="only one line"), "two lines",
+            "thumbnail_text needs two lines")
+        one(lambda c: c.update(rate="0%"), "explicit sign", "rate without a sign")
+        one(lambda c: c["scenes"][0].update(narration="too short"), "words",
+            "a scene with too few words")
+        one(lambda c: c["scenes"][0].update(sfx="explosion"), "unknown sfx",
+            "an unknown sfx")
+        one(lambda c: c["scenes"][3].update(image="frames/scene_01.png"), "same image",
+            "two scenes sharing one image")
+        one(lambda c: c["scenes"].__setitem__(
+            0, dict(c["scenes"][0], narration="TODO write this")), "TODO",
+            "leftover TODO placeholder text")
+        one(lambda c: [s.pop("chapter") for s in c["scenes"]], "3 chapters",
+            "fewer than three chapters")
+        one(lambda c: c.update(languages={"hi": {}}), "no voice",
+            "a language block with no voice")
+
+        # every real episode must lint clean -- this is the gate the CLI exposes
+        for slug in factory.list_projects():
+            proj = os.path.join(ROOT, "projects", slug)
+            with open(os.path.join(proj, "video.json"), encoding="utf-8") as f:
+                cfg = json.load(f)
+            found = factory.validate_config(cfg, proj)
+            check(not found, f"{slug}: lints clean", "; ".join(found)[:80])
+
+
+# --------------------------------------------------------------------------
+# Loudness plumbing + thumbnail props
+# --------------------------------------------------------------------------
+
+def test_loudness_and_props():
+    check(factory._finite(-14.2) and not factory._finite("-inf")
+          and not factory._finite(None),
+          "silence (-inf) is rejected as a loudnorm measurement")
+    # mix and normalize must happen in ONE encode: measuring an intermediate
+    # file instead would put three AAC generations on the shipped master
+    graph = factory.mix_filter("bed.wav", 100.0, 0.13)
+    check("[mix]" in graph and "normalize=0" in graph,
+          "the mix graph ends on [mix] and never lets amix halve the narration")
+    check(factory.mix_filter(None, 0, 0) == "[0:a]anull[mix]",
+          "a music-free episode still produces a [mix] label")
+    filt = factory.loudnorm_filter({"input_i": -22.0, "input_tp": -3.0,
+                                    "input_lra": 7.0, "input_thresh": -32.0,
+                                    "target_offset": 0.5})
+    check("linear=true" in filt and "measured_I=-22.0" in filt,
+          "measured stats produce a linear (non-pumping) second pass")
+    check(f"aresample={factory.AUDIO_SR}" in filt,
+          "loudnorm's 192 kHz output is resampled back before the encoder")
+    check("linear=true" not in factory.loudnorm_filter(None),
+          "a failed probe falls back to single-pass instead of lying")
+    check(factory.LOUDNESS_I == -14.0,
+          "the loudness target is YouTube's -14 LUFS", str(factory.LOUDNESS_I))
+    check(qc.LUFS_TARGET == factory.LOUDNESS_I,
+          "QC judges against the same target the factory renders to")
+
+    from engine import thumbnail
+    for name in ("rocket", "plane", "sun", "molecule", "planet", "raindrop",
+                 "prism", "salt_crystal", "wave", "mountain"):
+        check(name in thumbnail.PROPS, f"thumbnail prop {name} is available")
+    # every declared prop must actually draw -- the old code silently fell back
+    # to a rocket, so a broken prop shipped as a rocket and nobody noticed
+    img, d = tk.canvas("day")
+    for name, fn in thumbnail.PROPS.items():
+        try:
+            fn(d, 960, 700, 0.6)
+            ok, why = True, ""
+        except Exception as e:                      # noqa: BLE001
+            ok, why = False, f"{type(e).__name__}: {e}"
+        check(ok, f"thumbnail prop {name} draws without error", why)
+    for slug in factory.list_projects():
+        with open(os.path.join(ROOT, "projects", slug, "video.json"),
+                  encoding="utf-8") as f:
+            prop = json.load(f).get("thumbnail_prop", "rocket")
+        check(prop in thumbnail.PROPS, f"{slug}: thumbnail_prop {prop!r} is real")
+
+
+# --------------------------------------------------------------------------
+# Frame staleness -- editing the art must invalidate the frames
+# --------------------------------------------------------------------------
+
+def test_frame_staleness():
+    with tempfile.TemporaryDirectory() as tmp:
+        cfg = {"scenes": [{"image": "frames/scene_01.png"}]}
+        frames = os.path.join(tmp, "frames")
+        os.makedirs(frames)
+        png = os.path.join(frames, "scene_01.png")
+        script = os.path.join(tmp, "render_scenes.py")
+        with open(script, "w") as f:
+            f.write("import os\n"
+                    "os.makedirs('frames', exist_ok=True)\n"
+                    "open('frames/scene_01.png','ab').write(b'x')\n")
+
+        factory.ensure_frames(tmp, cfg)
+        check(os.path.exists(png), "a missing frame is rendered")
+        size = os.path.getsize(png)
+
+        factory.ensure_frames(tmp, cfg)
+        check(os.path.getsize(png) == size, "an up-to-date frame is left alone")
+
+        # the art is code: touching the script has to invalidate the PNG
+        os.utime(script, (time.time() + 10, time.time() + 10))
+        factory.ensure_frames(tmp, cfg)
+        check(os.path.getsize(png) > size, "editing render_scenes.py re-renders",
+              f"{size} -> {os.path.getsize(png)} bytes")
+
+        size = os.path.getsize(png)
+        factory.ensure_frames(tmp, cfg, force=True)
+        check(os.path.getsize(png) > size, "--force re-renders even a fresh frame")
+
+
+def test_scaffold_shorts():
+    import new_episode
+
+    for n in (1, 2, 3, 4, 10):
+        with tempfile.TemporaryDirectory() as tmp:
+            new_episode.PROJECTS, old = tmp, new_episode.PROJECTS
+            try:
+                proj = new_episode.scaffold(f"probe-{n}", None, n)
+            finally:
+                new_episode.PROJECTS = old
+            with open(os.path.join(proj, "video.json"), encoding="utf-8") as f:
+                cfg = json.load(f)
+            idx = cfg["shorts_scenes"]
+            check(len(set(idx)) == len(idx) and all(1 <= i <= n for i in idx),
+                  f"scaffold with {n} scenes makes distinct in-range shorts_scenes",
+                  str(idx))
+
+
 def main():
     print("\nunit tests")
     print("-" * 60)
     for fn in (test_concat_paths, test_srt, test_frame_alignment,
                test_variant_isolation, test_chapters, test_tts_cache,
-               test_music, test_qc, test_toolkit_and_outros):
+               test_music, test_qc, test_short_cues, test_caption_cards,
+               test_validate, test_loudness_and_props, test_frame_staleness,
+               test_scaffold_shorts, test_toolkit_and_outros):
         print(f"\n{fn.__name__}")
         fn()
     print("-" * 60)

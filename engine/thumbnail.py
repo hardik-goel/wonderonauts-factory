@@ -54,26 +54,55 @@ def _lines(text: str):
 
 # The mascot is the rocket, but a thumbnail sells better when it shows the
 # episode's actual subject. `thumbnail_prop` in video.json picks the hero.
+#
+# Every drawable hero lives in PROPS. factory.py validates `thumbnail_prop`
+# against it, because the old `else: rocket` fallback meant a typo -- or a prop
+# the toolkit had grown but this module had not -- shipped a rocket on a rain
+# episode and nobody noticed until the thumbnail was already live.
+PROPS = {
+    "rocket":      lambda d, x, y, s: tk.rocket(d, x, y, s, face=True),
+    "plane":       lambda d, x, y, s: tk.plane(d, x, y - 120 * s, 0.66 * s),
+    "paper_plane": lambda d, x, y, s: tk.paper_plane(d, x, y - 130 * s, 1.5 * s),
+    "sun":         lambda d, x, y, s: tk.sun(d, x, y - 150 * s, 150 * s),
+    "molecule":    lambda d, x, y, s: tk.molecule(d, x, y - 150 * s, 130 * s),
+    "planet":      lambda d, x, y, s: tk.planet(d, x, y - 150 * s, 155 * s, face=True),
+    "raindrop":    lambda d, x, y, s: tk.raindrop(d, x, y - 150 * s, 150 * s),
+    "prism":       lambda d, x, y, s: tk.prism(d, x, y - 150 * s, 320 * s),
+    "cloud":       lambda d, x, y, s: tk.cloud(d, x, y - 170 * s, 1.3 * s),
+    "airfoil":     lambda d, x, y, s: tk.airfoil(d, x, y - 150 * s, 1.1 * s),
+    "kid":         lambda d, x, y, s: tk.kid(d, x, y + 150 * s, 1.15 * s,
+                                             arms="one_up", mouth="o"),
+    "salt_crystal": lambda d, x, y, s: tk.salt_crystal(d, x, y - 160 * s, 240 * s),
+    "wave":        lambda d, x, y, s: tk.wave(d, x, y - 60 * s, 620 * s, 1.0 * s),
+    "mountain":    lambda d, x, y, s: tk.mountain(d, x, y + 60 * s, 520 * s, 420 * s),
+}
+
+
 def _prop(d, kind: str, x: int, y: int, scale: float):
-    if kind == "plane":
-        tk.plane(d, x, y - 120 * scale, 0.66 * scale)
-    elif kind == "paper_plane":
-        tk.paper_plane(d, x, y - 130 * scale, 1.5 * scale)
-    elif kind == "sun":
-        tk.sun(d, x, y - 150 * scale, 150 * scale)
-    elif kind == "molecule":
-        tk.molecule(d, x, y - 150 * scale, 130 * scale)
-    else:
-        tk.rocket(d, x, y, scale, face=True)
+    PROPS.get(kind, PROPS["rocket"])(d, x, y, scale)
 
 
-def variant_a(text: str, sky: str = "day", prop: str = "rocket") -> Image.Image:
+# The lower third of the thumbnail. Green hills under an ocean episode reads as
+# the wrong video before anyone has read the title, and the thumbnail is the
+# single biggest click-through lever there is.
+BACKDROPS = ("land", "sea", "none")
+
+
+def _backdrop(d, kind: str, y: int):
+    if kind == "sea":
+        tk.sea(d, y)
+    elif kind != "none":
+        tk.ground(d, y)
+
+
+def variant_a(text: str, sky: str = "day", prop: str = "rocket",
+              bg: str = "land") -> Image.Image:
     """Text dominant: the title fills the frame, mascot stays small."""
     img, d = tk.canvas(sky)
     tk.sun(d, 190, 165, 118, rotate=8)
     tk.cloud(d, 1660, 200, 0.72)
     tk.cloud(d, 300, 640, 0.55)
-    tk.ground(d, 900)
+    _backdrop(d, bg, 900)
 
     lines = _lines(text)
     lead, punch = lines[:-1], lines[-1].strip()
@@ -90,12 +119,13 @@ def variant_a(text: str, sky: str = "day", prop: str = "rocket") -> Image.Image:
     return tk.vignette(img, 0.20)
 
 
-def variant_b(text: str, sky: str = "day", prop: str = "rocket") -> Image.Image:
+def variant_b(text: str, sky: str = "day", prop: str = "rocket",
+              bg: str = "land") -> Image.Image:
     """Character dominant: big kid + the episode's prop, one short line."""
     img, d = tk.canvas(sky)
     tk.sun(d, 1740, 160, 110, rotate=20)
     tk.cloud(d, 520, 190, 0.85)
-    tk.ground(d, 860)
+    _backdrop(d, bg, 860)
 
     lines = _lines(text)
     punch = lines[-1].strip().upper()
@@ -111,10 +141,10 @@ def variant_b(text: str, sky: str = "day", prop: str = "rocket") -> Image.Image:
 
 
 def render_pair(text: str, out_a: str, out_b: str, sky: str = "day",
-                prop: str = "rocket"):
+                prop: str = "rocket", bg: str = "land"):
     """Write both variants; returns (path_a, path_b)."""
-    return (_finish(variant_a(text, sky, prop), out_a),
-            _finish(variant_b(text, sky, prop), out_b))
+    return (_finish(variant_a(text, sky, prop, bg), out_a),
+            _finish(variant_b(text, sky, prop, bg), out_b))
 
 
 if __name__ == "__main__":

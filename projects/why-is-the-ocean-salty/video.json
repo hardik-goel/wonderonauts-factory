@@ -1,0 +1,76 @@
+{
+  "title": "Why Is the SEA Salty? 🌊 Science for Kids | Wonder-o-nauts",
+  "voice": "en-US-AnaNeural",
+  "rate": "+0%",
+  "description": "Nobody ever poured salt into the ocean. So why is the sea salty? Dive in with the Wonder-o-nauts and follow one tiny speck of rock all the way from a mountain to the middle of the sea.\n\nIn this episode:\n🌧️ Why rain is a tiny bit sour (and why rocks can feel it)\n🏞️ Rivers really ARE salty -- just too weakly to taste\n☀️ The salt trap: water can fly away, salt cannot\n🧂 A safe experiment you can do with a dish of salty water\n🏊 Bonus wonder: the sea you can float in like a cork\n\nWhat should we explore next? Tell us in the comments!\n\n#kidsscience #stemforkids #wonderonauts #scienceforkids #ocean",
+  "tags": "kids science, why is the sea salty, why is the ocean salty, ocean for kids, salt, water cycle, weathering, science for kids, STEM for kids, educational video for children, wonder-o-nauts",
+  "thumbnail_text": "Why is the sea\nSALTY?",
+  "thumbnail_prop": "salt_crystal",
+  "thumbnail_bg": "sea",
+  "music": true,
+  "music_seed": 5,
+  "bgm_vol": 0.13,
+  "shorts_scenes": [2, 7, 9],
+  "scenes": [
+    {
+      "image": "frames/scene_01.png",
+      "chapter": "Blast off!",
+      "sfx": "sparkle",
+      "narration": "Hello, Wonder-o-nauts! Buckle up, because today we are diving into the sea. Have you ever swallowed a mouthful of sea water by accident? Bleugh! It is SALTY. But nobody ever poured any salt in. So where did all of it come from?"
+    },
+    {
+      "image": "frames/scene_02.png",
+      "chapter": "The taste test",
+      "sfx": "pop",
+      "narration": "Here is the strange part. Rain is not salty. The water in your bath is not salty. Rivers are not salty either. Every drop that flows into the sea tastes of nothing at all. So how does the sea end up so salty?"
+    },
+    {
+      "image": "frames/scene_03.png",
+      "chapter": "Not the fish!",
+      "sfx": "whoosh",
+      "narration": "Some people guess that the fish make the sea salty. They do not. Others guess that a giant ship spilled its cargo. Nope! The real answer is much slower, and much more amazing. It begins high up in the mountains, with rain."
+    },
+    {
+      "image": "frames/scene_04.png",
+      "chapter": "Secret 1: sour rain",
+      "sfx": "whoosh",
+      "narration": "Secret number one. As rain falls, it grabs a gas out of the air called carbon dioxide. That makes every single raindrop a tiny bit sour, like an extremely weak lemon. Your tongue cannot tell. But rock can feel it."
+    },
+    {
+      "image": "frames/scene_05.png",
+      "chapter": "Rain nibbles the rocks",
+      "sfx": "whoosh",
+      "narration": "Sour rain lands on stone and nibbles. Drip. Drip. Drip. Over thousands of years it loosens tiny specks of mineral out of the rock, and some of those specks are salt. The mountain does not even notice they are gone."
+    },
+    {
+      "image": "frames/scene_06.png",
+      "chapter": "Rivers carry it",
+      "sfx": "whoosh",
+      "narration": "Every stream and every river carries those specks downhill, all the way to the sea. So rivers really are a little bit salty! Just far too weak for your tongue to notice. One river, one day, one grain at a time."
+    },
+    {
+      "image": "frames/scene_07.png",
+      "chapter": "Secret 2: the salt trap",
+      "sfx": "sparkle",
+      "narration": "Secret number two, and this is the clever bit. The Sun lifts water out of the sea and turns it into clouds. But salt is far too heavy to fly. So the water leaves, and the salt stays. The sea is a salt trap."
+    },
+    {
+      "image": "frames/scene_08.png",
+      "chapter": "Billions of years",
+      "sfx": "pop",
+      "narration": "Now do that for billions of years. Today, a big bottle of sea water holds about a spoonful of salt. And if we scooped every grain out of the ocean and spread it over the land, it would pile up as tall as a fifty storey building."
+    },
+    {
+      "image": "frames/scene_09.png",
+      "chapter": "Bonus wonder",
+      "sfx": "sparkle",
+      "narration": "Bonus wonder! The Dead Sea is almost ten times saltier than the ocean, so people float in it like corks. Try this yourself. Stir salt into warm water until it vanishes, then leave the dish somewhere sunny. The water goes. The salt comes back."
+    },
+    {
+      "image": "frames/scene_10.png",
+      "chapter": "Mission complete!",
+      "sfx": "success",
+      "narration": "So there it is. Sour rain nibbles the rock, rivers carry the specks to the sea, and the Sun steals the water but leaves the salt behind. Mission complete, Wonder-o-nauts! Now tell us in the comments: what should we explore next?"
+    }
+  ]
+}

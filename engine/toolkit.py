@@ -920,6 +920,162 @@ def cycle_arrow(d: ScaledDraw, cx: int, cy: int, rx: float, ry: float,
               fill=col)
 
 
+def sea(d: ScaledDraw, y: int = 760, color=None, deep=None, amp: float = 16,
+        wavelength: float = 300, phase: float = 0.0, foam: bool = True):
+    """Ocean filling everything below `y`, with a rolling surface.
+
+    The surface is a real sine, not a straight line with squiggles on top, so
+    two scenes at different phases read as the same sea moving.
+    """
+    c = color or (72, 156, 214)
+    dp = deep or (44, 116, 176)
+    pts = []
+    for px in range(-20, W + 21, 12):
+        pts.append((px, y + math.sin(phase + px / max(20.0, wavelength) * 2 * math.pi) * amp))
+    d.polygon(pts + [(W + 20, H + 20), (-20, H + 20)], fill=c)
+    # a darker band a little further down gives the water depth
+    deep_pts = [(px, py + 78) for px, py in pts]
+    d.polygon(deep_pts + [(W + 20, H + 20), (-20, H + 20)], fill=dp)
+    if foam:
+        d.line(pts, fill=(226, 244, 255), width=9, joint="curve")
+
+
+def wave(d: ScaledDraw, x: int, y: int, width: float = 520, scale: float = 1.0,
+         color=None, deep=None, foam: bool = True):
+    """One breaking swell centered on (x, y) -- the 'sea' icon, not a whole ocean.
+
+    The crest sits left of centre and the face is steeper on the right, which is
+    what stops a wave reading as a symmetrical hill (a triangle with a white cap
+    is a mountain, and the first version of this primitive was exactly that).
+    """
+    c = color or (72, 156, 214)
+    dp = deep or (44, 116, 176)
+    s = scale
+    w = width / 2.0
+    h = 172 * s
+    crest_u = -0.16                     # crest offset across the width, -1..1
+
+    def profile(u):
+        """Height of the swell at u in -1..1: one hump, leaning forward."""
+        skew = 1.5 if u > crest_u else 2.4      # gentle back, steep face
+        return h * math.exp(-((u - crest_u) * skew) ** 2)
+
+    # the swell sits ON a water line: a deep slab under it reads as a block, so
+    # the skirt is only just enough to overlap whatever sea() drew
+    base = y + 34 * s
+    top = [(x + w * (i / 40.0 * 2 - 1), y - profile(i / 40.0 * 2 - 1))
+           for i in range(41)]
+    d.polygon(top + [(x + w, base), (x - w, base)], fill=c)
+    # a soft shadow down the face gives the curl its depth
+    d.polygon([(x + w * crest_u, y - h * 0.96),
+               (x + w * (crest_u + 0.44), y - h * 0.34),
+               (x + w * (crest_u + 0.26), base),
+               (x + w * (crest_u - 0.06), base)], fill=dp)
+
+    if foam:
+        # a crescent of foam spilling forward off the crest
+        cap = []
+        for i in range(25):
+            u = crest_u - 0.42 + (i / 24.0) * 0.92
+            cap.append((x + w * u, y - profile(u)))
+        for i in range(24, -1, -1):
+            u = crest_u - 0.42 + (i / 24.0) * 0.92
+            drop = 26 * s + 34 * s * max(0.0, (u - crest_u) / 0.5)
+            cap.append((x + w * u, y - profile(u) + drop))
+        d.polygon(cap, fill=(226, 244, 255))
+        for i, k in enumerate((0.56, 0.74, 0.90)):
+            r = (17 - i * 4) * s
+            fx, fy = x + w * k, y - profile(k) + 24 * s
+            d.ellipse([fx - r, fy - r, fx + r, fy + r], fill=(226, 244, 255))
+
+
+def salt_crystal(d: ScaledDraw, x: int, y: int, size: float = 90, color=None,
+                 sparkle: bool = True, rotate: float = 0.0):
+    """A grain of salt, drawn as the cube it actually is.
+
+    Salt crystals really are cubic -- teaching the shape costs nothing and it is
+    the detail children repeat back.
+    """
+    s = size / 2.0
+    top = color or (250, 252, 255)
+    left = (214, 228, 244)
+    right = (232, 240, 250)
+    a = math.radians(rotate)
+
+    def P(px, py):
+        return (x + px * math.cos(a) - py * math.sin(a),
+                y + px * math.sin(a) + py * math.cos(a))
+
+    # isometric cube: top rhombus, then the two visible side faces
+    d.polygon([P(0, -s), P(s, -s * 0.5), P(0, 0), P(-s, -s * 0.5)], fill=top)
+    d.polygon([P(-s, -s * 0.5), P(0, 0), P(0, s), P(-s, s * 0.5)], fill=left)
+    d.polygon([P(s, -s * 0.5), P(0, 0), P(0, s), P(s, s * 0.5)], fill=right)
+    if sparkle and size >= 40:
+        for dx, dy, r in ((-0.72, -0.72, 0.13), (0.78, -0.46, 0.09)):
+            sx, sy = x + s * dx * 1.5, y + s * dy * 1.5
+            rr = size * r
+            d.line([(sx - rr, sy), (sx + rr, sy)], fill=PALETTE["white"], width=5)
+            d.line([(sx, sy - rr), (sx, sy + rr)], fill=PALETTE["white"], width=5)
+
+
+def mountain(d: ScaledDraw, x: int, y: int, w: float = 520, h: float = 420,
+             color=None, shade=None, snow: bool = True):
+    """Rocky peak with its feet on `y` and its summit at `y - h`."""
+    rock = color or (128, 122, 148)
+    dark = shade or (98, 94, 120)
+    d.polygon([(x - w / 2, y), (x, y - h), (x + w / 2, y)], fill=rock)
+    # the shaded face makes it read as a solid, not a triangle
+    d.polygon([(x, y - h), (x + w / 2, y), (x, y)], fill=dark)
+    if snow:
+        cap = h * 0.30
+        k = cap / h
+        d.polygon([(x, y - h),
+                   (x + w / 2 * k, y - h + cap),
+                   (x + w * 0.10 * k, y - h + cap * 0.72),
+                   (x - w * 0.08 * k, y - h + cap),
+                   (x - w / 2 * k, y - h + cap)], fill=(240, 248, 255))
+
+
+def river(d: ScaledDraw, points, width: float = 70, color=None, taper: float = 1.0,
+          shine: bool = True):
+    """Water running along `points`, optionally widening toward the sea."""
+    c = color or (96, 178, 232)
+    raw = list(points)
+    if len(raw) < 2:
+        return
+    # subdivide before walking the path: drawing one segment per control point
+    # made the width jump in visible steps wherever the river widened
+    pts = []
+    for i in range(len(raw) - 1):
+        (ax, ay), (bx, by) = raw[i], raw[i + 1]
+        for k in range(8):
+            t = k / 8.0
+            pts.append((ax + (bx - ax) * t, ay + (by - ay) * t))
+    pts.append(raw[-1])
+
+    for i in range(len(pts) - 1):
+        t = i / max(1, len(pts) - 2)
+        wdt = max(4, width * (1.0 + (taper - 1.0) * t))
+        d.line([pts[i], pts[i + 1]], fill=c, width=int(wdt), joint="curve")
+        r = wdt / 2.0
+        px, py = pts[i + 1]
+        d.ellipse([px - r, py - r, px + r, py + r], fill=c)
+    if shine:
+        # a highlight running along the water, offset along the path's own
+        # normal -- offsetting in y alone left it hanging off a steep stretch
+        hi = []
+        for i, (px, py) in enumerate(pts):
+            ax, ay = pts[max(0, i - 1)]
+            bx, by = pts[min(len(pts) - 1, i + 1)]
+            L = math.hypot(bx - ax, by - ay) or 1.0
+            nx, ny = -(by - ay) / L, (bx - ax) / L
+            t = i / max(1, len(pts) - 1)
+            wdt = width * (1.0 + (taper - 1.0) * t)
+            hi.append((px + nx * wdt * 0.22, py + ny * wdt * 0.22))
+        d.line(hi, fill=(206, 236, 255), width=max(3, int(width * 0.22)),
+               joint="curve")
+
+
 def prism(d: ScaledDraw, x: int, y: int, size: float = 260, color=None):
     """Glass triangle used for the rainbow-splitting demo."""
     c = color or PALETTE["prism_glass"]

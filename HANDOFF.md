@@ -26,9 +26,33 @@ like the same channel. Episode 1 contributed `sun`, `kid`, `rocket`, `molecule`,
 `zig_ray` and `prism`; episode 2 added `plane`, `paper_plane`, `airfoil`,
 `wind_streaks` and `force_arrow`; episode 3 added `planet`, `orbit_ring` and
 `light_beam`; episode 4 added `raindrop`, `rainfall`, `puddle` and
-`cycle_arrow`. Each reused everything else unchanged. Budget
+`cycle_arrow`; episode 5 added `sea`, `wave`, `salt_crystal`, `mountain` and
+`river`. Each reused everything else unchanged. Budget
 one or two new primitives per episode -- more than that usually means the
-episode is fighting the identity instead of extending it.
+episode is fighting the identity instead of extending it. (Episode 5 needed
+five, which is over budget and worth noticing: an ocean episode simply had no
+water primitives to inherit. The next water episode should add none.)
+
+**Every master leaves at -14 LUFS.** YouTube attenuates loud uploads and does
+nothing at all to quiet ones, so a quiet master is quiet forever. `finalize()`
+runs a *two-pass* `loudnorm`: measure, then apply one constant gain with
+`linear=true`. Single-pass loudnorm is a dynamic compressor and audibly pumps
+the bed up in the gaps between sentences. QC re-measures with `ebur128` and
+flags drift, so a build that silently skipped the pass cannot ship looking fine.
+
+The measurement pass runs over the *filtergraph*, not over an intermediate file
+(`loudnorm_measure(inputs, graph)`). That is deliberate: mixing to disk, then
+measuring, then normalizing would put three generations of AAC on the shipped
+audio. Measuring the graph means the music mix and the normalization happen in
+one encode. If you ever add a stage here, keep it inside `mix_filter()` so it
+stays that way.
+
+**Shorts carry burned-in captions.** They are watched muted. `engine/captions.py`
+renders one RGBA card per cue with Pillow and `burn_captions()` composites them
+with `overlay` + `enable=`. It deliberately does not use `subtitles=` or
+`drawtext`: both are optional ffmpeg build features (libass / libfreetype) and
+the Homebrew build this was developed against has neither. Drawing the cards
+ourselves also keeps the channel's font and rounded-banner look.
 
 **Supersampled drawing.** `toolkit.canvas()` renders at 2x and `toolkit.save()`
 downsamples with LANCZOS. That is where the clean edges come from. `ScaledDraw`
@@ -96,7 +120,20 @@ The owner decides; the report just makes the decision take two minutes.
     axis-aligned, so `plane(pitch=...)` tilted every part except the fuselage
     until it was rebuilt as a rotated polygon plus two end caps. Any primitive
     that takes an angle must be built from polygons, lines and circles only.
-12. **Fonts**: Poppins Bold is the intended face. Drop `Poppins-Bold.ttf` into
+12. **The art is code, so frames expire.** `ensure_frames()` re-renders when a
+    frame is missing *or* older than `render_scenes.py` or `engine/toolkit.py`.
+    The original version only checked for missing files, which meant you could
+    redraw a scene, rebuild, and silently get the old picture back. Be aware of
+    the cost: editing one toolkit primitive invalidates every episode's frames,
+    so the next `--all` is a full re-encode. That is the right trade -- a wrong
+    frame ships, a slow build does not -- but do the toolkit edits together.
+13. **`loudnorm` resamples to 192 kHz internally.** Always follow it with
+    `aresample=44100` or the AAC encoder inherits the wrong rate.
+14. **A caption card is anchored by its top, not its bottom.** Anchoring by the
+    bottom made a two-line cue grow upward over the video's own caption banner.
+    `short_caption_y()` derives the position from the letterbox geometry and
+    pulls tall cards up out of the Shorts UI strip.
+15. **Fonts**: Poppins Bold is the intended face. Drop `Poppins-Bold.ttf` into
    `fonts/` and the toolkit picks it up automatically; otherwise it falls back to
    DejaVu (Linux/CI), Arial Rounded Bold (macOS) or Pillow's default. Devanagari
    and other non-Latin scripts fall back to a Unicode-wide face — check
@@ -108,11 +145,15 @@ The owner decides; the report just makes the decision take two minutes.
 
 | Concern | File |
 |---|---|
-| Pipeline constants (fps, zoom, fades, CRF, mix levels) | top of `factory.py` |
+| Pipeline constants (fps, zoom, fades, CRF, mix levels, LUFS) | top of `factory.py` |
 | Ken Burns / fades / SFX mix | `factory.py: build_clip()` |
+| Music mix + loudness | `factory.py: finalize()` / `loudnorm_apply()` |
+| Short reframing + caption burn-in | `factory.py: make_short()` / `burn_captions()` |
+| video.json linting (`--validate`) | `factory.py: validate_config()` |
 | Music bed, SFX, sting | `engine/music.py` |
 | Scene art primitives | `engine/toolkit.py` |
-| Thumbnail compositions | `engine/thumbnail.py` |
+| Caption card rendering | `engine/captions.py` |
+| Thumbnail compositions + `PROPS` | `engine/thumbnail.py` |
 | QC thresholds | top of `engine/qc.py` |
 | Fast logic tests | `tests/unit.py` (seconds, no ffmpeg encoding) |
 | Offline end-to-end test | `tests/smoke.py` (also run by CI) |
@@ -133,14 +174,16 @@ Folders whose name starts with `_` are ignored by `--check` and `--all`.
   explanation for children is worse than no translation.
 - **Word-level captions** — current SRT is sentence-level, timed by character
   share of the measured narration. Word-level timing would need a forced
-  aligner; sentence cues read better for young viewers anyway.
+  aligner; sentence cues read better for young viewers anyway. The Short's
+  burned-in cards use the same sentence cues.
 - **Animated scenes** — the pipeline is stills + Ken Burns. Real animation would
   mean rendering frame sequences from the toolkit; the primitives are already
   parameterized for it (`rotate`, `wobble`, `phase`), so it is a natural next
   step if retention data ever asks for it.
-- **Loudness normalization (EBU R128)** — QC measures loudness but does not fix
-  it. If Edge ever ships a quieter voice, add `loudnorm` in `build_clip()`
-  rather than turning up `SFX_VOL`.
+- **Loudness normalization (EBU R128)** — *built* in 3.1.0. `finalize()` runs a
+  two-pass `loudnorm` to -14 LUFS and QC re-measures with `ebur128`. It lives at
+  the final mix, not in `build_clip()`: normalizing per scene would flatten the
+  deliberate dynamic between a quiet explanation and a loud "BOING!".
 
 ---
 
@@ -167,13 +210,47 @@ someone went looking.
 5. **The manifest and metadata never listed `qc_report.txt`**, because QC ran
    after both were written. Order is now QC -> metadata -> manifest.
 
+## Audit trail: second pass (3.1.0)
+
+1. **Editing the art changed nothing.** `ensure_frames()` only re-rendered
+   *missing* frames, so redrawing a scene and rebuilding silently reused the old
+   PNG. It now also re-renders when `render_scenes.py` or `engine/toolkit.py` is
+   newer than a frame, and on `--force`. Covered by `test_frame_staleness`.
+2. **An unknown `thumbnail_prop` shipped a rocket.** `engine/thumbnail._prop()`
+   ended in `else: rocket`, so a typo -- or a prop the toolkit had grown but the
+   thumbnail module had not -- produced a plausible-looking wrong thumbnail.
+   Props now live in a `PROPS` registry, an unknown value is a hard error, and
+   `test_loudness_and_props` draws every registered prop.
+3. **Episodes shipped at about -24 dB.** Loud enough to pass the old QC floor,
+   quiet enough that every viewer reaches for the volume. Two-pass `loudnorm` to
+   -14 LUFS now runs on `final.mp4` and `short.mp4`.
+4. **Shorts had no on-screen text at all**, which is most of the message on a
+   platform watched muted. Cards are rendered by `engine/captions.py` and burned
+   in with `overlay`.
+5. **`season_table()` never printed "empty".** `"  " + "".join(...) or "  empty"`
+   parses as `("  " + join) or "  empty"`, and a two-space string is truthy.
+6. **The scaffolder produced a Short that played one scene twice.**
+   `[2, min(6, n), min(8, n)]` collapses to `[2, 3, 3]` for a 3-scene episode --
+   which is exactly what CI scaffolds. It now dedupes.
+7. **A scene shorter than two fades flickered.** `fade=t=out` started before
+   `fade=t=in` finished; the fade length is now clamped to `duration / 2.2`.
+8. **`--lang` builds reused the English thumbnail text.** A language block can
+   now carry its own `thumbnail_text` / `thumbnail_prop`.
+9. **`--jobs 0` or a negative value** reached `ThreadPoolExecutor` unchecked.
+   Clamped to at least 1.
+10. **A two-line burned caption overlapped the video's own banner**, because the
+    card was anchored by its bottom edge. Caught by a unit test that asserted
+    the letterbox geometry, not by watching the file.
+
 ## Release checklist for the repo itself
 
 ```bash
-python3 factory.py --check                 # deps + encoders + fonts
+python3 factory.py --check                 # deps + encoders + fonts + filters
+python3 factory.py --validate              # every episode's video.json lints
 python3 tests/unit.py                      # fast logic tests (seconds)
 python3 tests/smoke.py                     # full offline pipeline
 python3 -m engine.music --demo /tmp/audio  # peaks should read ~0.72
+python3 -m engine.captions "A test caption" # burned-in caption card
 python3 projects/why-is-the-sky-blue/render_scenes.py --sheet
 ```
 

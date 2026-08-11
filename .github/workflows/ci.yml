@@ -33,6 +33,11 @@ jobs:
       - name: Unit tests (paths, timing, cache keys, music, QC, safe zones)
         run: python3 tests/unit.py
 
+      # Every shipped episode must lint clean. This is the same gate the owner
+      # runs before spending a build.
+      - name: Lint every episode's video.json
+        run: python3 factory.py --validate
+
       - name: Music engine sanity (peaks ~0.72, deterministic)
         run: |
           python3 - <<'PY'
@@ -57,8 +62,14 @@ jobs:
       - name: Scene art renders
         run: python3 projects/why-is-the-sky-blue/render_scenes.py --sheet
 
+      - name: Caption cards render (burned into every Short)
+        run: |
+          python3 -m engine.captions "Rivers really ARE salty, just far too weak to taste."
+          test -s caption_demo.png
+
       # No network TTS: smoke.py fabricates narration + matching cache stamps,
-      # so the whole pipeline runs offline. Everything else is the real thing.
+      # so the whole pipeline runs offline. Everything else is the real thing --
+      # including the -14 LUFS pass and the Short's burned-in captions.
       - name: Full pipeline smoke test (includes --shorts)
         run: python3 tests/smoke.py --keep
 
