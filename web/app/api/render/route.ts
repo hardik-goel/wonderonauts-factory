@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { startRender } from "@/lib/sandbox";
+import { startRender, describeSandboxError } from "@/lib/sandbox";
 import { slugify } from "@/lib/slug";
 import { PRESETS, isPreset } from "@/lib/presets";
 import type { Draft } from "@/lib/types";
@@ -28,8 +28,7 @@ export async function POST(req: Request) {
         await startRender({ slug: preset.slug, title: preset.title }),
       );
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not start the render.";
-      return NextResponse.json({ error: message }, { status: 502 });
+      return NextResponse.json({ error: describeSandboxError(err) }, { status: 502 });
     }
   }
 
@@ -47,7 +46,6 @@ export async function POST(req: Request) {
     const job = await startRender(draft);
     return NextResponse.json(job);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not start the render.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: describeSandboxError(err) }, { status: 502 });
   }
 }

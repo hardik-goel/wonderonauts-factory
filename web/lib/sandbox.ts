@@ -62,6 +62,24 @@ function gitSource() {
     : { type: "git" as const, url: REPO, depth: 1 };
 }
 
+/**
+ * Turn a Sandbox SDK failure into something a human can act on.
+ *
+ * The SDK throws `APIError` whose `message` is only "Status code 400 is not
+ * ok"; the reason ("snapshot not found", "sandbox name already in use") is in
+ * the parsed body. Surfacing just the message strands the user with a number.
+ */
+export function describeSandboxError(err: unknown): string {
+  if (!(err instanceof Error)) return "Could not start the render.";
+  const e = err as Error & { json?: unknown; text?: string; status?: number };
+  const body = e.json as { error?: { message?: string; code?: string } } | undefined;
+  const detail =
+    body?.error?.message ??
+    body?.error?.code ??
+    (typeof e.text === "string" && e.text.length < 300 ? e.text : undefined);
+  return detail ? `${e.message} — ${detail}` : e.message;
+}
+
 export function newJobId(slug: string): string {
   const rand = Math.random().toString(36).slice(2, 8);
   // sandbox names are per-project unique; keep them short and readable
@@ -112,7 +130,17 @@ export async function startRender(draft: Draft | BundledEpisode): Promise<Job> {
 
   if (!bundled) {
     const d = draft as Draft;
-    await sandbox.mkDir(`${ROOT}/${projectDir}/frames`);
+    // mkDir is not recursive and projects/<slug> does not exist yet for a new
+    // episode, so it fails with "No such file or directory" on the parent.
+    // mkdir -p is the whole fix; it also makes a re-render of the same slug a
+    // no-op instead of an error.
+    const mk = await sandbox.runCommand({
+      cmd: "mkdir",
+      args: ["-p", `${ROOT}/${projectDir}/frames`],
+    });
+    if (mk.exitCode !== 0) {
+      throw new Error(`could not create ${projectDir}: ${await mk.stderr()}`);
+    }
     files.push(
       {
         path: `${ROOT}/${projectDir}/video.json`,
@@ -141,7 +169,13 @@ function buildScript(projectDir: string): string {
 cd "${ROOT}"
 {
   echo "== preparing environment =="
-  ${SNAPSHOT ? 'echo "using prepared snapshot"' : `(
+  ${SNAPSHOT ? `echo "using prepared snapshot"
+  # The snapshot froze the repo at the moment it was built, so its toolkit is
+  # as old as the snapshot. Without this, an episode using a primitive added
+  # after that day dies with AttributeError halfway through the render.
+  echo "== syncing repo =="
+  git fetch --depth 1 origin master && git reset --hard FETCH_HEAD
+  python3 -m pip install --quiet --break-system-packages -r requirements.txt` : `(
 ${BOOTSTRAP
   .split("\n")
   .map((l) => "    " + l)

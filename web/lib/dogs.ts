@@ -62,7 +62,7 @@ export const SETTINGS: Setting[] = [
       `tk.sun(d, 1660, 180, 112, rotate=12)`,
       `tk.sea(d, 700, phase=0.4)`,
       `tk.ground(d, 880, color=(244, 220, 168), dark=(228, 200, 146), hills=False)`,
-      `tk.wave(d, 300, 700, 520, 0.7)`,
+      `tk.wave(d, 320, 790, 460, 0.55)`,
     ],
   },
   {
@@ -231,13 +231,22 @@ function beat(
   const right = `tk.dog(d, 1450, ${y}, 1.15, facing="left", coat=${LOOKS[1].coat}, collar=${LOOKS[1].collar}, speaking=${speakerIdx === 1 ? "True" : "False"}, expression=${py(speakerIdx === 1 ? expression : "happy")})`;
   // the bubble sits over the speaker's side so the eye goes to the right dog
   const bx = speakerIdx === 0 ? 660 : 1240;
+
+  // Size the bubble to the line, not to the widest line anyone might ever
+  // write: a fixed 980x300 balloon around "Why not?" reads as a mistake.
+  const wrapped = wrap(text, 34);
+  const lines = wrapped.split("\n");
+  const longest = Math.max(...lines.map((l) => l.length));
+  const bw = Math.min(980, Math.max(460, Math.round(longest * 30) + 170));
+  const bh = Math.min(320, Math.max(190, lines.length * 76 + 110));
+
   return [
     `    img, d = tk.canvas("${setting.sky}")`,
     ...setting.backdrop.map((b) => `    ${b}`),
     `    ${left}`,
     `    ${right}`,
-    `    tk.thought_bubble(d, ${bx}, 330, w=980, h=300, tail_to=(${speakerIdx === 0 ? 520 : 1400}, 640),`,
-    `                      text=${py(wrap(text, 34))}, text_size=58)`,
+    `    tk.thought_bubble(d, ${bx}, 330, w=${bw}, h=${bh}, tail_to=(${speakerIdx === 0 ? 520 : 1400}, 640),`,
+    `                      text=${py(wrapped)}, text_size=58)`,
   ];
 }
 
