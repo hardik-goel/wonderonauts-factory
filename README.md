@@ -273,9 +273,10 @@ The complete schema. Only `title` and `scenes` are strictly required, but
 | `languages.<code>` | — | `{ voice, title, description, tags, thumbnail_text?, thumbnail_prop? }` |
 | `scenes` | — | The array below |
 
-**`thumbnail_prop` values:** `airfoil`, `cloud`, `kid`, `molecule`, `mountain`,
-`paper_plane`, `plane`, `planet`, `prism`, `raindrop`, `rocket`, `salt_crystal`,
-`sun`, `wave`. An unknown value is a **hard error**, not a silent fallback.
+**`thumbnail_prop` values:** `airfoil`, `cloud`, `dog`, `hare`, `kid`,
+`molecule`, `mountain`, `paper_plane`, `plane`, `planet`, `prism`, `raindrop`,
+`rocket`, `salt_crystal`, `sun`, `tortoise`, `wave`. An unknown value is a
+**hard error**, not a silent fallback.
 
 ### Per scene
 

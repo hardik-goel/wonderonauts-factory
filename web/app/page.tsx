@@ -336,7 +336,9 @@ function WritePanel({
             You write the narration; the studio builds the scene art, voice,
             music, captions, thumbnails and the upload sheet. Aim for{" "}
             <strong className="text-foreground">35–55 words</strong> a scene —
-            that lands around four minutes.
+            that lands around four minutes. Already have a script? Use{" "}
+            <strong className="text-foreground">Paste a whole script</strong> and
+            it fills every scene for you.
           </p>
           <button
             onClick={() => {
@@ -344,10 +346,10 @@ function WritePanel({
               setPasteNote(null);
             }}
             disabled={busy}
-            className="shrink-0 rounded-lg border border-border px-3 py-2 text-sm text-muted
-                       transition hover:border-sky hover:text-foreground"
+            className="shrink-0 rounded-lg border border-accent bg-accent/10 px-3 py-2
+                       text-sm font-medium text-foreground transition hover:bg-accent/20"
           >
-            {pasting ? "Cancel" : "Paste a whole script"}
+            {pasting ? "Cancel" : "📋 Paste a whole script"}
           </button>
         </div>
 

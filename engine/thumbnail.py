@@ -75,6 +75,12 @@ PROPS = {
     "salt_crystal": lambda d, x, y, s: tk.salt_crystal(d, x, y - 160 * s, 240 * s),
     "wave":        lambda d, x, y, s: tk.wave(d, x, y - 60 * s, 620 * s, 1.0 * s),
     "mountain":    lambda d, x, y, s: tk.mountain(d, x, y + 60 * s, 520 * s, 420 * s),
+    # story cast: a fable thumbnail with a rocket on it is the wrong video
+    "hare":        lambda d, x, y, s: tk.hare(d, x, y + 150 * s, 1.15 * s,
+                                              running=True, ears="back"),
+    "tortoise":    lambda d, x, y, s: tk.tortoise(d, x, y + 150 * s, 1.25 * s),
+    "dog":         lambda d, x, y, s: tk.dog(d, x, y + 150 * s, 1.15 * s,
+                                             expression="laugh", speaking=True),
 }
 
 

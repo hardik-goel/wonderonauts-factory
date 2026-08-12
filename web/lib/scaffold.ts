@@ -49,6 +49,11 @@ const PROP_CALL: Record<string, (x: number, y: number, s: number) => string> = {
   salt_crystal: (x, y, s) => `tk.salt_crystal(d, ${x}, ${y}, ${Math.round(200 * s)})`,
   wave: (x, y, s) => `tk.wave(d, ${x}, ${y}, ${Math.round(560 * s)})`,
   mountain: (x, y, s) => `tk.mountain(d, ${x}, ${y + 180}, ${Math.round(520 * s)}, ${Math.round(420 * s)})`,
+  // Story cast. The pipeline is generic but the art library is not: a fable
+  // only looks like a fable if its characters exist as primitives.
+  hare: (x, y, s) => `tk.hare(d, ${x}, ${y + 170}, ${(1.15 * s).toFixed(2)}, running=True, ears="back")`,
+  tortoise: (x, y, s) => `tk.tortoise(d, ${x}, ${y + 170}, ${(1.25 * s).toFixed(2)})`,
+  dog: (x, y, s) => `tk.dog(d, ${x}, ${y + 170}, ${(1.15 * s).toFixed(2)}, expression="happy")`,
 };
 
 export const PROPS = Object.keys(PROP_CALL);
