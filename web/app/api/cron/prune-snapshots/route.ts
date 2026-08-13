@@ -9,6 +9,15 @@ import { prune, gb, DEFAULT_MIN_AGE_MS } from "@/lib/snapshots";
  * but this keeps the quota honest anyway — expiries can be missing on anything
  * created before that change, and running out of snapshot storage breaks every
  * render at once with a 402.
+ *
+ * To run it by hand against production:
+ *
+ *   curl -H "Authorization: Bearer $CRON_SECRET" \
+ *     https://wonderonauts-studio.vercel.app/api/cron/prune-snapshots
+ *
+ * A 404 there means the current production deployment predates this route —
+ * the project is not connected to git, so pushing does not deploy it. Ship it
+ * with `cd web && vercel --prod`.
  */
 
 // Deletes are individual API calls; a backlog of them should not be cut off
