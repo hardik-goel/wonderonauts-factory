@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 import { Sandbox } from "@vercel/sandbox";
 import type { Draft, Job, JobStatus } from "./types";
 import { ARTIFACTS } from "./types";
+import { getJobRecord, mirrorJob, recordJobStart } from "./db";
 
 /**
  * Render orchestration.
@@ -20,6 +21,8 @@ import { ARTIFACTS } from "./types";
 const REPO = process.env.FACTORY_REPO_URL ?? "https://github.com/hardik-goel/wonderonauts-factory";
 const SNAPSHOT = process.env.FACTORY_SNAPSHOT_ID;
 const BUILD_TIMEOUT_MS = 25 * 60 * 1000;
+/** How long a finished job's filesystem stays readable. See startRender. */
+const JOB_SNAPSHOT_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Where the cloned repo actually lives.
@@ -48,7 +51,7 @@ export const BOOTSTRAP = [
   "python3 -m pip install --quiet --break-system-packages -r requirements.txt",
 ].join("\n");
 
-function credentials() {
+export function credentials() {
   const { VERCEL_TOKEN, VERCEL_TEAM_ID, VERCEL_PROJECT_ID } = process.env;
   return VERCEL_TOKEN && VERCEL_TEAM_ID && VERCEL_PROJECT_ID
     ? { token: VERCEL_TOKEN, teamId: VERCEL_TEAM_ID, projectId: VERCEL_PROJECT_ID }
@@ -108,6 +111,18 @@ export async function startRender(draft: Draft | BundledEpisode): Promise<Job> {
     timeout: BUILD_TIMEOUT_MS,
     // the filesystem is the job record; it must survive the session
     persistent: true,
+    // …but not forever. Persistence means Vercel snapshots the filesystem when
+    // the session stops, so every render leaves ~1 GB behind, and with no
+    // expiry they accumulate until the plan's snapshot storage quota trips:
+    //   Status code 402 ... Hobby plan usage limit exceeded for Snapshots Storage
+    // A job is only interesting while someone is still reading its log or
+    // pulling its artifacts, so give it a day and let the platform reclaim it.
+    // Only the prepared base snapshot (created by scripts/create-snapshot.ts) is
+    // meant to be permanent.
+    snapshotExpiration: JOB_SNAPSHOT_TTL_MS,
+    // A job that stops and resumes more than once does not need its earlier
+    // filesystems kept around either.
+    keepLastSnapshots: { count: 1, expiration: JOB_SNAPSHOT_TTL_MS },
     tags: { app: "wonderonauts", slug: draft.slug.slice(0, 60) },
   };
   const sandbox = SNAPSHOT
@@ -160,7 +175,12 @@ export async function startRender(draft: Draft | BundledEpisode): Promise<Job> {
     detached: true,
   });
 
-  return { ...job, status: "running" };
+  const running: Job = { ...job, status: "running" };
+  // History is durable, the sandbox is not. Record the job now — including the
+  // inputs — so it survives a failed build, a closed tab, and eventually the
+  // expiry of the snapshot the artifacts live on.
+  await recordJobStart(running, "videoJson" in draft && draft.videoJson ? draft : undefined);
+  return running;
 }
 
 function buildScript(projectDir: string): string {
@@ -207,10 +227,21 @@ async function readText(
 /** A bundled episode: everything it needs is already committed in the repo. */
 export type BundledEpisode = { slug: string; title: string; videoJson?: undefined };
 
-export type JobView = Job & { log: string };
+export type JobView = Job & { log: string; downloadable?: boolean };
 
 export async function getJob(id: string): Promise<JobView> {
-  const sandbox = await attach(id);
+  // The sandbox is the live source of truth while it exists. Once it is stopped
+  // and its snapshot pruned, attaching fails — and the stored record is all
+  // that is left. That row still has the log, the QC report and the script; it
+  // just cannot serve the video any more.
+  let sandbox: Awaited<ReturnType<typeof attach>>;
+  try {
+    sandbox = await attach(id);
+  } catch (err) {
+    const stored = await getJobRecord(id);
+    if (stored) return stored;
+    throw err;
+  }
 
   const [metaRaw, logRaw, exitRaw] = await Promise.all([
     readText(sandbox, "job.json"),
@@ -218,7 +249,11 @@ export async function getJob(id: string): Promise<JobView> {
     readText(sandbox, "job.exit"),
   ]);
 
-  if (!metaRaw) throw new Error(`job ${id} not found`);
+  if (!metaRaw) {
+    const stored = await getJobRecord(id);
+    if (stored) return stored;
+    throw new Error(`job ${id} not found`);
+  }
   const job = JSON.parse(metaRaw) as Job;
   const log = logRaw ?? "";
 
@@ -236,7 +271,12 @@ export async function getJob(id: string): Promise<JobView> {
     }
   }
 
-  return { ...job, status, exitCode, artifacts, qc, log };
+  const view: JobView = { ...job, status, exitCode, artifacts, qc, log, downloadable: true };
+  // The poller is already holding the sandbox's state; copying it out here is
+  // what makes the record durable, and it keeps the service key out of the
+  // build script, which runs generated Python.
+  await mirrorJob(view);
+  return view;
 }
 
 async function listArtifacts(

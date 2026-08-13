@@ -26,6 +26,9 @@ async function main() {
     source: { type: "git", url: REPO, depth: 1 },
     resources: { vcpus: 4 },
     timeout: 15 * 60 * 1000,
+    // Render sandboxes expire their snapshots after a day (see lib/sandbox.ts);
+    // this one is the base every render boots from, so it has to outlive them.
+    snapshotExpiration: 0,
   });
 
   const res = await sandbox.runCommand({
