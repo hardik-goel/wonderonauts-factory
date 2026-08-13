@@ -505,7 +505,8 @@ def kid(d: ScaledDraw, x: int, y: int, scale: float = 1.0, skin=None, shirt=None
 
 def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right",
         coat=None, ear=None, speaking: bool = False, expression: str = "happy",
-        collar=None, tongue: bool = True, outfit=None, holding=None):
+        collar=None, tongue: bool = True, outfit=None, holding=None,
+        markings=None, name=None):
     """Sitting cartoon dog with its paws at (x, y).
 
     `speaking` opens the muzzle; the listener in a two-hander should be drawn
@@ -519,8 +520,14 @@ def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right"
     lit ones -- flat fills alone made these read as blobs rather than animals.
 
     expression: happy | laugh | surprised | deadpan | smug
-    outfit:     None | shades | helmet | beanie | rainhat | partyhat
-    holding:    None | beer | marshmallow | ball
+    outfit:     None | shades | redshades | helmet | beanie | rainhat |
+                partyhat | chef | cap
+    holding:    None | beer | mug | marshmallow | ball | spatula | treats
+    markings:   None | collie  -- a white blaze, muzzle, chest and tail tip over
+                a dark coat, which is what separates the two leads at a glance
+                rather than relying on coat colour alone.
+    name:       drawn on a bone tag hanging from the collar, so the characters
+                are named on screen the way they are in the reference art.
     Give each character a different `coat` so the two never blur together.
     """
     s = scale
@@ -560,11 +567,22 @@ def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right"
         else:
             d.chord(_box(cx, cy, rx, ry), a0, a1, fill=fill)
 
+    collie = markings == "collie"
+    # A collie's white is brighter than the soft belly cream a tan dog gets.
+    if collie:
+        belly = white
+
     register_box("dog", (x - 180 * s, y - 360 * s, x + 180 * s, y + 20 * s))
 
     # contact shadow — without it the dog floats above the ground
     d.ellipse([x - 118 * s, y - 20 * s, x + 118 * s, y + 16 * s],
               fill=_blend(ink, white, 0.72))
+
+    # Life-support pack goes on before the body so the dog sits in front of it.
+    if outfit == "helmet":
+        rrect(-72, -150, 44, 74, (222, 228, 238), radius=20)
+        rrect(-72, -150, 34, 62, (198, 206, 220), radius=16)
+        rrect(-40, -196, 12, 20, (240, 168, 72), radius=5)
 
     # ---- tail: a tapering plume sweeping up behind the haunch. The old single
     # polygon jutted up beside the head and read as a raised arm; equal-sized
@@ -574,7 +592,12 @@ def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right"
                        (-124, -148, 21), (-134, -172, 17), (-139, -194, 13),
                        (-140, -212, 10)):
         ell(tx, ty, tr, tr, shade)
-    ell(-140, -212, 10, 10, light)
+    if collie:
+        # A collie's tail ends in a white flash — cheap, and it reads instantly.
+        for tx, ty, tr in ((-134, -172, 17), (-139, -194, 13), (-140, -212, 10)):
+            ell(tx, ty, tr, tr, white)
+    else:
+        ell(-140, -212, 10, 10, light)
 
     # ---- body: haunch behind, chest in front, belly patch for the near side
     ell(-48, -74, 64, 72, shade)
@@ -593,10 +616,31 @@ def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right"
 
     _dog_suit(d, P, ell, rrect, s, sgn, outfit, ink, white)
 
-    if collar:
+    # A sealed suit covers the collar; leaving the tag floating over the neck
+    # ring made it look stuck to the outside of the spacesuit.
+    if collar and outfit != "helmet":
         rrect(6, -186, 54, 13, collar, radius=12)
-        ell(46, -172, 13, 13, (250, 206, 92))                 # tag
-        ell(46, -172, 6, 6, _blend((250, 206, 92), ink, 0.35))
+        rrect(6, -184, 54, 5, _blend(collar, white, 0.22), radius=4)   # highlight
+        if name:
+            # A bone-shaped tag, like the reference art: two lobes and a bar,
+            # with the name across it. Drawn in screen space rather than dog
+            # space so the lettering never comes out mirrored on a left-facing
+            # dog.
+            tag_x, tag_y = x + 26 * sgn * s, y - 156 * s
+            bw, bh = 46 * s, 21 * s
+            for lobe in (-bw * 0.52, bw * 0.52):
+                d._d.ellipse([(tag_x + lobe - bh * 0.62) * d.s, (tag_y - bh * 0.62) * d.s,
+                              (tag_x + lobe + bh * 0.62) * d.s, (tag_y + bh * 0.62) * d.s],
+                             fill=(252, 246, 232))
+            d._d.rounded_rectangle([(tag_x - bw * 0.60) * d.s, (tag_y - bh * 0.40) * d.s,
+                                    (tag_x + bw * 0.60) * d.s, (tag_y + bh * 0.40) * d.s],
+                                   radius=int(6 * s * d.s), fill=(252, 246, 232))
+            f = font(max(7, int(13 * s)))
+            d._d.text((tag_x * d.s, tag_y * d.s), name.upper()[:6], font=f,
+                      fill=(96, 78, 58), anchor="mm")
+        else:
+            ell(46, -172, 13, 13, (250, 206, 92))              # plain disc tag
+            ell(46, -172, 6, 6, _blend((250, 206, 92), ink, 0.35))
 
     # ---- head
     hx, hy = 16, -252
@@ -613,6 +657,13 @@ def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right"
     # A soft crown highlight only. A second, brighter brow ridge on top of this
     # merged with the brows into one grey slab across the eyes.
     ell(hx - 6, hy - 40, 48, 22, _blend(c, white, 0.09))
+    if collie:
+        # The blaze: a white wedge running from between the ears down over the
+        # bridge of the nose. It has to sit between the eyes, not across them,
+        # so it is narrow at the top and widens only once past the brow.
+        d.polygon([P(hx - 19, hy - 64), P(hx - 7, hy - 64),
+                   P(hx + 2, hy + 16), P(hx - 26, hy + 16)], fill=white)
+        ell(hx - 13, hy - 60, 8, 9, white)
 
     # ---- snout: raised muzzle in front of the face, then the nose on top
     ell(hx + 34, hy + 32, 48, 36, _blend(cream, c, 0.10))
@@ -685,13 +736,27 @@ def _blend(a, b, t: float):
 def _dog_suit(d, P, ell, rrect, s, sgn, outfit, ink, white):
     """Body-worn kit, drawn over the torso before the head goes on."""
     if outfit == "helmet":
-        # Astronaut: white hard-suit over the chest with a control panel.
-        rrect(6, -134, 68, 74, (238, 242, 248), radius=34)
-        rrect(6, -176, 44, 16, (214, 222, 234), radius=8)      # neck ring
-        rrect(-16, -120, 22, 16, (86, 108, 148), radius=6)     # panel
+        # A proper EVA suit, not a bib. The first version was one white
+        # rounded rectangle on the chest, which read as an apron: the haunch
+        # and legs stayed bare fur, so the dog looked undressed from behind.
+        suit = (240, 243, 249)
+        seam = (206, 214, 228)
+        ell(-48, -74, 66, 74, suit)                            # haunch cover
+        ell(-52, -84, 46, 50, (250, 252, 255))
+        ell(6, -130, 74, 82, suit)                             # torso
+        ell(14, -112, 42, 52, (250, 252, 255))
+        for lx in (26, 78):                                    # sleeves
+            rrect(lx, -44, 24, 36, suit, radius=22)
+            rrect(lx, -30, 24, 7, (240, 168, 72), radius=4)    # cuff stripe
+        rrect(6, -178, 52, 15, seam, radius=8)                 # neck ring
+        rrect(-2, -152, 62, 9, seam, radius=5)                 # shoulder seam
+        # chest control panel
+        rrect(2, -120, 32, 24, (74, 92, 128), radius=7)
+        rrect(2, -128, 26, 6, (150, 172, 206), radius=3)
         for i, col in enumerate(((234, 96, 96), (250, 206, 92), (126, 214, 244))):
-            ell(-24 + i * 8, -120, 3, 3, col)
-        rrect(44, -128, 10, 30, (240, 168, 72), radius=5)      # air hose
+            ell(-10 + i * 11, -114, 4, 4, col)
+        rrect(52, -140, 9, 34, (240, 168, 72), radius=5)       # air hose
+        rrect(-34, -168, 26, 10, (234, 96, 96), radius=4)      # mission flash
     elif outfit == "rainhat":
         rrect(6, -132, 70, 72, (250, 206, 92), radius=32)      # yellow slicker
         rrect(6, -176, 40, 14, (232, 186, 72), radius=7)
@@ -701,15 +766,44 @@ def _dog_suit(d, P, ell, rrect, s, sgn, outfit, ink, white):
         rrect(6, -140, 62, 40, (206, 92, 108), radius=26)      # knitted jumper
         for sy in (-152, -134):
             d.line([P(-52, sy), P(64, sy)], fill=(186, 76, 94), width=int(5 * s))
+    elif outfit == "chef":
+        # Blue gingham apron, as in the reference. The check is drawn as a
+        # coarse grid rather than a texture — at 1080p a finer weave turns to
+        # mush once the frame is scaled down for the Short.
+        ax0, ax1, ay0, ay1 = -46, 66, -184, -60
+        rrect(10, -122, 58, 64, (238, 244, 252), radius=14)
+        # Grid segments are clamped to the apron's own box; drawn full-width
+        # they ran straight off the cloth and striped the dog's legs.
+        for gx in range(ax0 + 8, ax1, 22):
+            d.line([P(gx, ay0), P(gx, ay1)], fill=(126, 168, 218), width=int(9 * s))
+        for gy in range(ay0 + 8, ay1, 22):
+            d.line([P(ax0, gy), P(ax1, gy)], fill=(126, 168, 218), width=int(9 * s))
+        for tie in (-26, 46):                                  # neck ties
+            d.line([P(tie, -190), P(10, -156)], fill=(238, 244, 252), width=int(8 * s))
 
 
 def _dog_headgear(d, P, ell, rrect, chord, s, sgn, hx, hy, outfit, ink, white):
     """Head-worn kit, drawn last so it sits on top of the face."""
-    if outfit == "shades":
-        rrect(hx - 8, hy - 14, 66, 20, ink, radius=10)
+    if outfit in ("shades", "redshades"):
+        # Goofy wears black frames, Woofy red — the reference gives them
+        # different glasses, and it is one more way to tell them apart.
+        frame = (196, 62, 58) if outfit == "redshades" else ink
+        rrect(hx - 8, hy - 14, 66, 20, frame, radius=10)
         ell(hx + 12, hy - 14, 24, 18, (36, 40, 58))
         ell(hx - 44, hy - 12, 21, 16, (36, 40, 58))
         d.line([P(hx + 6, hy - 20), P(hx + 20, hy - 26)], fill=white, width=int(5 * s))
+    elif outfit == "chef":
+        # Toque: a tall pleated puff on a band.
+        rrect(hx - 2, hy - 74, 54, 16, (250, 250, 248), radius=8)      # band
+        for px_, r in ((-38, 30), (-2, 34), (34, 29)):
+            ell(hx + px_, hy - 108, r, r, (252, 252, 250))
+        rrect(hx - 2, hy - 108, 52, 30, (252, 252, 250), radius=16)
+    elif outfit == "cap":
+        # Worn backwards, like the driving panel in the reference.
+        chord(hx - 2, hy - 40, 72, 56, 180, 360, (58, 106, 174))
+        rrect(hx - 2, hy - 44, 72, 12, (48, 92, 156), radius=6)
+        rrect(hx - 62, hy - 46, 26, 10, (58, 106, 174), radius=5)     # rear peak
+        ell(hx - 2, hy - 82, 9, 9, (48, 92, 156))                     # button
     elif outfit == "helmet":
         # The glass itself went in behind the head; up here only the rim and a
         # glint, which is what sells "inside a bubble" without hiding the face.
@@ -755,6 +849,34 @@ def _dog_prop(d, P, ell, rrect, chord, s, sgn, holding, ink, white):
         ell(px - 10, py, 12, 10, (250, 158, 158))
         d.line([P(px - 30, py + 10), P(px + 30, py + 10)], fill=(206, 62, 62),
                width=int(5 * s))
+    elif holding == "mug":
+        # The diner mug from the reference: straight sides, a band for the
+        # slogan, steam curling off the top.
+        rrect(px, py + 4, 30, 34, (66, 126, 190), radius=7)
+        rrect(px, py + 6, 30, 14, (246, 250, 254), radius=4)   # slogan band
+        ell(px, py - 30, 30, 11, (250, 252, 255))              # rim
+        ell(px, py - 30, 22, 7, (72, 52, 38))                  # coffee
+        chord(px + 38, py + 2, 18, 20, 270, 90, (54, 108, 168), width=9)
+        for i, sx in enumerate((-12, 4, 18)):                  # steam
+            chord(px + sx, py - 62 - i * 6, 11, 16, 200, 340,
+                  _blend((255, 255, 255), (200, 214, 230), 0.4), width=5)
+    elif holding == "spatula":
+        d.line([P(px - 6, py + 48), P(px + 16, py - 30)], fill=(64, 68, 84),
+               width=int(9 * s))
+        rrect(px + 20, py - 46, 20, 16, (98, 104, 122), radius=5)
+        for slot in (-9, 0, 9):                                # slots
+            d.line([P(px + 20 + slot, py - 56), P(px + 20 + slot, py - 36)],
+                   fill=(70, 74, 90), width=int(4 * s))
+    elif holding == "treats":
+        # A bowl of biscuits, plus two bones spilled in front of it.
+        chord(px, py + 24, 44, 34, 0, 180, (58, 116, 180))
+        ell(px, py + 24, 44, 12, (78, 140, 206))
+        for bx, by in ((-16, 18), (2, 14), (18, 20)):
+            ell(px + bx, py + by, 11, 9, (214, 158, 92))
+        for bone_x in (-58, -30):
+            ell(px + bone_x, py + 52, 7, 6, (238, 206, 150))
+            ell(px + bone_x + 18, py + 52, 7, 6, (238, 206, 150))
+            rrect(px + bone_x + 9, py + 52, 11, 4, (238, 206, 150), radius=2)
 
 
 def hare(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right",

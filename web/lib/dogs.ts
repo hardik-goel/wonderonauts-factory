@@ -145,11 +145,40 @@ export const SETTINGS: Setting[] = [
 
 const SFX_CYCLE = ["sparkle", "pop", "whoosh", "pop", "sparkle", "whoosh"] as const;
 
-/** Two coats that never blur together, plus matching collars. */
-const LOOKS = [
-  { coat: "(216, 170, 110)", collar: "(224, 86, 86)" },
-  { coat: "(122, 134, 152)", collar: "(86, 184, 224)" },
-];
+/**
+ * The cast. Two fixed characters rather than two anonymous coat colours.
+ *
+ * GOOFY is the golden retriever who tells the joke; WOOFY is the black-and-white
+ * collie who regrets asking. They are told apart three ways on purpose — coat,
+ * markings, and collar colour — because on a phone screen, at Short size, coat
+ * alone is not enough. The bone tag names them on screen.
+ *
+ * Whatever the script calls its speakers, the first speaker is drawn as Goofy
+ * and the second as Woofy: the art is the constant, the names in the dialogue
+ * are not.
+ */
+export const CAST = [
+  {
+    name: "Goofy",
+    breed: "golden retriever",
+    coat: "(232, 178, 106)",
+    collar: "(66, 126, 190)",
+    markings: null as string | null,
+    /** Sunny, over-eager, always has the joke. */
+    persona: "teller",
+  },
+  {
+    name: "Woofy",
+    breed: "border collie",
+    coat: "(58, 60, 74)",
+    collar: "(206, 66, 62)",
+    markings: "collie",
+    /** Dry, long-suffering, sets up the punchline and regrets it. */
+    persona: "straight",
+  },
+] as const;
+
+const LOOKS = CAST;
 
 function py(s: string): string {
   return JSON.stringify(String(s));
@@ -260,10 +289,17 @@ function dogCall(
     `facing="${which === 0 ? "right" : "left"}"`,
     `coat=${look.coat}`,
     `collar=${look.collar}`,
+    `name=${py(look.name)}`,
     `speaking=${opts.speaking ? "True" : "False"}`,
     `expression=${py(opts.expression)}`,
   ];
-  if (dressed && setting.outfit) parts.push(`outfit=${py(setting.outfit)}`);
+  if (look.markings) parts.push(`markings=${py(look.markings)}`);
+  if (dressed && setting.outfit) {
+    // Woofy wears the red frames; everything else is worn by both.
+    const outfit =
+      setting.outfit === "shades" && which === 1 ? "redshades" : setting.outfit;
+    parts.push(`outfit=${py(outfit)}`);
+  }
   if (dressed && setting.holding) parts.push(`holding=${py(setting.holding)}`);
   return parts.join(", ") + ")";
 }
