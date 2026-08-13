@@ -109,6 +109,7 @@ export default function Studio() {
     };
   }, [phase, jobId]);
 
+  /** Throw everything away and start from a blank studio. */
   function reset() {
     setPhase("idle");
     setDraft(null);
@@ -116,14 +117,41 @@ export default function Studio() {
     setError(null);
   }
 
+  /**
+   * Step back one screen, keeping the work.
+   *
+   * Distinct from reset(): going back from the review to the editor used to
+   * call reset(), which discarded the draft — so "back" silently destroyed the
+   * script you had just written. This only rewinds the phase.
+   */
+  function goBack() {
+    setError(null);
+    if (phase === "review") return setPhase("idle");
+    // From a finished or failed render, the draft is still in hand, so the
+    // useful place to land is the review screen where it can be edited and
+    // sent again.
+    if (draft) {
+      setJob(null);
+      return setPhase("review");
+    }
+    reset();
+  }
+
   const showInput = phase === "idle" || phase === "writing";
+  const canGoBack = phase === "review" || phase === "done" || phase === "failed";
 
   return (
     <main className="mx-auto w-full max-w-5xl px-5 py-10 sm:py-14">
       <Header aiEnabled={caps?.ai ?? false} />
 
-      {showInput && caps && (
-        <>
+      {/*
+        Hidden rather than unmounted. Each panel owns the script you typed into
+        it, so unmounting on the way to the review screen meant Back handed you
+        an empty form. `hidden` keeps that state alive and still takes the panel
+        out of the accessibility tree and the tab order.
+      */}
+      {caps && (
+        <div hidden={!showInput}>
           <ModeTabs mode={mode} setMode={setMode} caps={caps} busy={busy} />
           {mode === "ai" && (
             <AiPanel busy={busy} phase={phase} onSubmit={(topic) => void makeDraft("/api/draft", { topic })} />
@@ -137,7 +165,7 @@ export default function Studio() {
           {mode === "bundled" && (
             <BundledPanel caps={caps} busy={busy} onRender={(preset) => void render({ preset })} />
           )}
-        </>
+        </div>
       )}
 
       {error && (
@@ -147,11 +175,16 @@ export default function Studio() {
       )}
 
       {draft && phase === "review" && (
-        <DraftReview draft={draft} onChange={setDraft} onRender={() => void render(draft)} onBack={reset} />
+        <DraftReview draft={draft} onChange={setDraft} onRender={() => void render(draft)} onBack={goBack} />
       )}
 
       {job && (phase === "rendering" || phase === "done" || phase === "failed") && (
-        <RenderPanel job={job} phase={phase} onReset={reset} />
+        <RenderPanel
+          job={job}
+          phase={phase}
+          onReset={reset}
+          onBack={canGoBack ? goBack : undefined}
+        />
       )}
 
       <Footer />
@@ -645,7 +678,7 @@ function DraftReview({
               className="rounded-xl border border-border px-4 py-3 text-sm text-muted
                          transition hover:border-sky hover:text-foreground"
             >
-              Back
+              ← Back to editing
             </button>
             <button
               onClick={onRender}
@@ -706,10 +739,13 @@ function RenderPanel({
   job,
   phase,
   onReset,
+  onBack,
 }: {
   job: JobView;
   phase: Phase;
   onReset: () => void;
+  /** Omitted mid-render: there is no earlier screen to return to yet. */
+  onBack?: () => void;
 }) {
   const logRef = useRef<HTMLPreElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -736,13 +772,24 @@ function RenderPanel({
         <div className="flex flex-wrap items-center gap-3">
           <StatusDot phase={phase} />
           <h2 className="text-lg font-semibold">{job.title}</h2>
-          <button
-            onClick={onReset}
-            className="ml-auto rounded-lg border border-border px-3 py-1.5 text-sm text-muted
-                       transition hover:border-sky hover:text-foreground"
-          >
-            New episode
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted
+                           transition hover:border-sky hover:text-foreground"
+              >
+                ← Back to the script
+              </button>
+            )}
+            <button
+              onClick={onReset}
+              className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted
+                         transition hover:border-sky hover:text-foreground"
+            >
+              New episode
+            </button>
+          </div>
         </div>
         <p className="mt-2 text-sm text-muted">
           {phase === "rendering" &&

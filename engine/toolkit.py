@@ -505,15 +505,22 @@ def kid(d: ScaledDraw, x: int, y: int, scale: float = 1.0, skin=None, shirt=None
 
 def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right",
         coat=None, ear=None, speaking: bool = False, expression: str = "happy",
-        collar=None, tongue: bool = True):
+        collar=None, tongue: bool = True, outfit=None, holding=None):
     """Sitting cartoon dog with its paws at (x, y).
 
     `speaking` opens the muzzle; the listener in a two-hander should be drawn
     with speaking=False so it is always obvious who has the line. This is a
     per-line mouth state, not phoneme lip-sync -- the pipeline renders one
-    still per scene, so there is no frame-by-frame mouth to animate.
+    still per scene, so there is no frame-by-frame mouth to animate. The open
+    jaw is drawn large, with tongue and teeth, because at 1080p a small dark
+    oval reads as a smudge rather than a dog mid-sentence.
+
+    Depth comes from a second, darker pass of the same shapes offset behind the
+    lit ones -- flat fills alone made these read as blobs rather than animals.
 
     expression: happy | laugh | surprised | deadpan | smug
+    outfit:     None | shades | helmet | beanie | rainhat | partyhat
+    holding:    None | beer | marshmallow | ball
     Give each character a different `coat` so the two never blur together.
     """
     s = scale
@@ -521,76 +528,233 @@ def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right"
     c = coat or (214, 168, 108)
     ec = ear or tuple(max(0, v - 34) for v in c)
     ink = PALETTE["ink"]
+    white = PALETTE["white"]
     cream = (250, 240, 226)
+    # One coat, three tones: shade for forms turning away, light for the top
+    # planes the sun hits. Everything below picks from these.
+    shade = tuple(max(0, int(v * 0.82)) for v in c)
+    light = tuple(min(255, int(v + (255 - v) * 0.20)) for v in c)
+    belly = (252, 246, 236)
+    gum = (232, 120, 134)
 
     def P(px, py):
         return (x + px * sgn * s, y + py * s)
 
-    def ell(cx, cy, rx, ry, fill):
+    def _box(cx, cy, rx, ry):
         a, b = P(cx - rx, cy - ry), P(cx + rx, cy + ry)
-        d.ellipse([min(a[0], b[0]), min(a[1], b[1]),
-                   max(a[0], b[0]), max(a[1], b[1])], fill=fill)
+        return [min(a[0], b[0]), min(a[1], b[1]), max(a[0], b[0]), max(a[1], b[1])]
 
-    register_box("dog", (x - 170 * s, y - 330 * s, x + 170 * s, y + 10 * s))
+    def ell(cx, cy, rx, ry, fill):
+        d.ellipse(_box(cx, cy, rx, ry), fill=fill)
 
-    # tail — a raised tail is most of what makes a cartoon dog read as friendly
-    d.polygon([P(-74, -108), P(-150, -190), P(-124, -206), P(-58, -132)], fill=c)
-    ell(-140, -198, 18, 18, c)
-    # haunch + front legs
-    ell(-46, -72, 62, 70, c)
-    for lx in (28, 74):
-        a, b = P(lx - 22, -74), P(lx + 22, 0)
-        d.rounded_rectangle([min(a[0], b[0]), min(a[1], b[1]),
-                             max(a[0], b[0]), max(a[1], b[1])],
-                            radius=20 * s, fill=c)
-        ell(lx, -6, 26, 16, cream)
-    # body
-    ell(6, -128, 70, 78, c)
+    def rrect(cx, cy, rx, ry, fill, radius=18):
+        d.rounded_rectangle(_box(cx, cy, rx, ry), radius=radius * s, fill=fill)
+
+    def chord(cx, cy, rx, ry, a0, a1, fill, width=None):
+        # Angles are screen-space, so a mirrored dog needs them mirrored too or
+        # every smile becomes a frown when it faces left.
+        if sgn < 0:
+            a0, a1 = 180 - a1, 180 - a0
+        if width:
+            d.arc(_box(cx, cy, rx, ry), a0, a1, fill=fill, width=int(width * s))
+        else:
+            d.chord(_box(cx, cy, rx, ry), a0, a1, fill=fill)
+
+    register_box("dog", (x - 180 * s, y - 360 * s, x + 180 * s, y + 20 * s))
+
+    # contact shadow — without it the dog floats above the ground
+    d.ellipse([x - 118 * s, y - 20 * s, x + 118 * s, y + 16 * s],
+              fill=_blend(ink, white, 0.72))
+
+    # ---- tail: a tapering plume sweeping up behind the haunch. The old single
+    # polygon jutted up beside the head and read as a raised arm; equal-sized
+    # tufts read as a caterpillar, so this starts thick inside the hip and
+    # narrows to a tip.
+    for tx, ty, tr in ((-74, -88, 31), (-92, -104, 28), (-110, -124, 25),
+                       (-124, -148, 21), (-134, -172, 17), (-139, -194, 13),
+                       (-140, -212, 10)):
+        ell(tx, ty, tr, tr, shade)
+    ell(-140, -212, 10, 10, light)
+
+    # ---- body: haunch behind, chest in front, belly patch for the near side
+    ell(-48, -74, 64, 72, shade)
+    ell(-52, -84, 46, 52, c)                                  # hip highlight
+    ell(6, -130, 72, 80, c)
+    ell(14, -112, 44, 56, belly)                              # chest fur
+    ell(2, -178, 46, 30, light)                               # shoulder top light
+
+    # ---- front legs with toes
+    for lx in (26, 78):
+        rrect(lx, -38, 23, 40, c, radius=22)
+        ell(lx, -8, 27, 17, belly)
+        for t in (-9, 0, 9):
+            d.line([P(lx + t, -14), P(lx + t, -2)], fill=_blend(ink, belly, 0.55),
+                   width=max(1, int(3 * s)))
+
+    _dog_suit(d, P, ell, rrect, s, sgn, outfit, ink, white)
+
     if collar:
-        a, b = P(-46, -196), P(58, -172)
-        d.rounded_rectangle([min(a[0], b[0]), min(a[1], b[1]),
-                             max(a[0], b[0]), max(a[1], b[1])],
-                            radius=12 * s, fill=collar)
-    # head
-    hx, hy = 16, -244
-    ell(hx, hy, 74, 68, c)
-    # ears: floppy, hanging beside the head
-    for off in (-72, 72):
-        ell(hx + off, hy + 16, 26, 54, ec)
-    # muzzle
-    ell(hx + 30, hy + 34, 46, 32, cream)
-    ell(hx + 56, hy + 20, 13, 10, ink)                      # nose
-    # eyes and brows carry the expression
-    if expression == "surprised":
-        ell(hx + 6, hy - 12, 13, 15, PALETTE["white"])
-        ell(hx + 6, hy - 12, 8, 9, ink)
-        ell(hx - 40, hy - 10, 11, 13, PALETTE["white"])
-        ell(hx - 40, hy - 10, 6, 8, ink)
-    elif expression == "laugh":
-        for ex in (hx + 6, hx - 40):                        # happy closed arcs
-            a, b = P(ex - 13, hy - 24), P(ex + 13, hy - 2)
-            d.chord([min(a[0], b[0]), min(a[1], b[1]),
-                     max(a[0], b[0]), max(a[1], b[1])], 200, 340, fill=ink)
-    else:
-        ell(hx + 6, hy - 12, 9, 11, ink)
-        ell(hx - 40, hy - 10, 8, 10, ink)
-    if expression == "smug":
-        d.line([P(hx - 14, hy - 40), P(hx + 22, hy - 32)], fill=ink, width=int(7 * s))
-    elif expression == "surprised":
-        d.line([P(hx - 16, hy - 44), P(hx + 24, hy - 48)], fill=ink, width=int(7 * s))
+        rrect(6, -186, 54, 13, collar, radius=12)
+        ell(46, -172, 13, 13, (250, 206, 92))                 # tag
+        ell(46, -172, 6, 6, _blend((250, 206, 92), ink, 0.35))
 
-    # mouth: open while this character has the line
-    if speaking:
-        mh = 30 if expression == "laugh" else 22
-        ell(hx + 34, hy + 46, 30, mh, ink)
-        if tongue:
-            ell(hx + 34, hy + 46 + mh * 0.42, 19, mh * 0.5, (238, 138, 150))
+    # ---- head
+    hx, hy = 16, -252
+    # A helmet bubble is drawn BEHIND the head; only its rim and glint go on
+    # top later. Filling glass over the face would hide the whole performance.
+    if outfit == "helmet":
+        ell(hx + 2, hy - 8, 110, 106, (214, 230, 244))
+        ell(hx + 2, hy - 8, 100, 96, (186, 218, 242))
+    # ears go behind the skull so the head reads as in front of them
+    for off, tone in ((-74, tuple(max(0, int(v * 0.86)) for v in ec)), (76, ec)):
+        ell(hx + off, hy + 22, 27, 58, tone)
+        ell(hx + off, hy + 34, 15, 34, _blend(tone, ink, 0.18))   # inner shadow
+    ell(hx, hy, 76, 70, c)
+    # A soft crown highlight only. A second, brighter brow ridge on top of this
+    # merged with the brows into one grey slab across the eyes.
+    ell(hx - 6, hy - 40, 48, 22, _blend(c, white, 0.09))
+
+    # ---- snout: raised muzzle in front of the face, then the nose on top
+    ell(hx + 34, hy + 32, 48, 36, _blend(cream, c, 0.10))
+    ell(hx + 30, hy + 24, 42, 26, cream)
+    ell(hx + 58, hy + 14, 15, 12, ink)                        # nose
+    ell(hx + 54, hy + 10, 5, 4, _blend(ink, white, 0.55))     # nose shine
+
+    # ---- eyes: sclera, iris, pupil, catchlight. The catchlight is what makes
+    # the difference between "two dots" and something that looks alive.
+    def eye(ex, ey, rx, ry):
+        ell(ex, ey, rx, ry, white)
+        ell(ex + 1, ey + 1, rx * 0.72, ry * 0.72, _blend(ink, (90, 140, 190), 0.45))
+        ell(ex + 1, ey + 1, rx * 0.42, ry * 0.42, ink)
+        ell(ex - rx * 0.34, ey - ry * 0.38, rx * 0.26, ry * 0.26, white)
+
+    if expression == "laugh":
+        for ex in (hx + 10, hx - 42):                          # happy closed arcs
+            chord(ex, hy - 14, 15, 13, 200, 340, ink, width=6)
+    elif expression == "surprised":
+        eye(hx + 10, hy - 14, 17, 19)
+        eye(hx - 42, hy - 12, 14, 16)
     else:
-        a, b = P(hx + 12, hy + 30), P(hx + 56, hy + 56)
-        d.chord([min(a[0], b[0]), min(a[1], b[1]),
-                 max(a[0], b[0]), max(a[1], b[1])], 20, 160, fill=ink)
-    for cx in (hx - 34, hx + 62):                            # cheeks
-        ell(cx, hy + 26, 14, 9, (250, 178, 178))
+        eye(hx + 10, hy - 14, 14, 16)
+        eye(hx - 42, hy - 12, 12, 14)
+
+    brow = _blend(ec, ink, 0.35)
+    if expression == "smug":
+        d.line([P(hx - 16, hy - 42), P(hx + 24, hy - 34)], fill=brow, width=int(8 * s))
+        d.line([P(hx - 58, hy - 34), P(hx - 30, hy - 40)], fill=brow, width=int(7 * s))
+    elif expression == "surprised":
+        chord(hx + 10, hy - 44, 20, 14, 190, 350, brow, width=7)
+        chord(hx - 42, hy - 42, 17, 12, 190, 350, brow, width=6)
+    elif expression == "deadpan":
+        d.line([P(hx - 4, hy - 40), P(hx + 26, hy - 40)], fill=brow, width=int(7 * s))
+        d.line([P(hx - 56, hy - 38), P(hx - 30, hy - 38)], fill=brow, width=int(6 * s))
+
+    # ---- mouth
+    if speaking:
+        # Open jaw: a wide dark cavity, a tongue filling the lower half, and a
+        # strip of teeth along the top so it reads as a mouth, not a hole.
+        mh = 34 if expression == "laugh" else 26
+        ell(hx + 34, hy + 50, 34, mh, _blend(ink, gum, 0.30))
+        d.chord(_box(hx + 34, hy + 50, 34, mh), 0, 180, fill=gum)
+        if tongue:
+            ell(hx + 34, hy + 50 + mh * 0.40, 21, mh * 0.52, (240, 146, 158))
+            d.line([P(hx + 34, hy + 50 + mh * 0.10), P(hx + 34, hy + 50 + mh * 0.80)],
+                   fill=_blend((240, 146, 158), ink, 0.22), width=max(1, int(3 * s)))
+        rrect(hx + 34, hy + 50 - mh * 0.78, 26, mh * 0.16, white, radius=6)
+        # little sound arcs, so the speaker is obvious even in a thumbnail crop
+        for i, r in enumerate((22, 38, 54)):
+            chord(hx + 96, hy + 34, r, r, 300, 60, _blend(ink, white, 0.45 + i * 0.14),
+                  width=5)
+    else:
+        chord(hx + 32, hy + 30, 30, 24, 20, 160, ink, width=7)
+
+    for cx in (hx - 38, hx + 66):                              # cheeks
+        ell(cx, hy + 24, 15, 10, (252, 176, 176))
+
+    _dog_headgear(d, P, ell, rrect, chord, s, sgn, hx, hy, outfit, ink, white)
+    if holding:
+        _dog_prop(d, P, ell, rrect, chord, s, sgn, holding, ink, white)
+
+
+def _blend(a, b, t: float):
+    """Mix two RGB colours. Used everywhere the dog needs a tone between two
+    palette entries without inventing a new constant for each one."""
+    return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
+
+
+def _dog_suit(d, P, ell, rrect, s, sgn, outfit, ink, white):
+    """Body-worn kit, drawn over the torso before the head goes on."""
+    if outfit == "helmet":
+        # Astronaut: white hard-suit over the chest with a control panel.
+        rrect(6, -134, 68, 74, (238, 242, 248), radius=34)
+        rrect(6, -176, 44, 16, (214, 222, 234), radius=8)      # neck ring
+        rrect(-16, -120, 22, 16, (86, 108, 148), radius=6)     # panel
+        for i, col in enumerate(((234, 96, 96), (250, 206, 92), (126, 214, 244))):
+            ell(-24 + i * 8, -120, 3, 3, col)
+        rrect(44, -128, 10, 30, (240, 168, 72), radius=5)      # air hose
+    elif outfit == "rainhat":
+        rrect(6, -132, 70, 72, (250, 206, 92), radius=32)      # yellow slicker
+        rrect(6, -176, 40, 14, (232, 186, 72), radius=7)
+        for by in (-150, -120):
+            ell(6, by, 6, 6, (232, 186, 72))
+    elif outfit == "beanie":
+        rrect(6, -140, 62, 40, (206, 92, 108), radius=26)      # knitted jumper
+        for sy in (-152, -134):
+            d.line([P(-52, sy), P(64, sy)], fill=(186, 76, 94), width=int(5 * s))
+
+
+def _dog_headgear(d, P, ell, rrect, chord, s, sgn, hx, hy, outfit, ink, white):
+    """Head-worn kit, drawn last so it sits on top of the face."""
+    if outfit == "shades":
+        rrect(hx - 8, hy - 14, 66, 20, ink, radius=10)
+        ell(hx + 12, hy - 14, 24, 18, (36, 40, 58))
+        ell(hx - 44, hy - 12, 21, 16, (36, 40, 58))
+        d.line([P(hx + 6, hy - 20), P(hx + 20, hy - 26)], fill=white, width=int(5 * s))
+    elif outfit == "helmet":
+        # The glass itself went in behind the head; up here only the rim and a
+        # glint, which is what sells "inside a bubble" without hiding the face.
+        chord(hx + 2, hy - 8, 110, 106, 0, 360, (236, 244, 252), width=8)
+        chord(hx + 2, hy - 8, 100, 96, 168, 252, white, width=10)  # glass glint
+        chord(hx + 2, hy - 8, 88, 84, 200, 232, white, width=5)
+        rrect(hx + 2, hy + 78, 76, 15, (214, 222, 234), radius=7)  # neck seal
+    elif outfit == "beanie":
+        chord(hx - 2, hy - 40, 78, 62, 180, 360, (206, 92, 108))
+        rrect(hx - 2, hy - 48, 78, 13, (232, 122, 138), radius=7)
+        ell(hx - 2, hy - 100, 20, 20, (248, 236, 226))              # bobble
+    elif outfit == "rainhat":
+        # Crown and brim both ride high: at the old height the brim cut across
+        # the eyes and the dog lost its face entirely.
+        chord(hx - 2, hy - 44, 74, 58, 180, 360, (250, 206, 92))
+        rrect(hx + 6, hy - 46, 92, 11, (232, 186, 72), radius=6)    # brim
+    elif outfit == "partyhat":
+        d.polygon([P(hx - 2, hy - 150), P(hx - 44, hy - 56), P(hx + 40, hy - 56)],
+                  fill=(126, 200, 240))
+        ell(hx - 2, hy - 152, 14, 14, (250, 206, 92))
+
+
+def _dog_prop(d, P, ell, rrect, chord, s, sgn, holding, ink, white):
+    """Something in the near front paw, at (78, -38)-ish in dog space."""
+    px, py = 96, -58
+    if holding == "beer":
+        # Mug: amber body, foam head, handle. Held clear of the chest so it
+        # does not merge into the coat.
+        rrect(px, py, 30, 40, (246, 178, 52), radius=8)
+        rrect(px, py + 12, 30, 26, (232, 152, 36), radius=8)
+        ell(px, py - 34, 32, 16, (255, 252, 244))              # foam
+        ell(px - 14, py - 42, 13, 11, (255, 252, 244))
+        ell(px + 16, py - 40, 11, 9, (255, 252, 244))
+        chord(px + 40, py, 20, 22, 270, 90, (232, 152, 36), width=9)   # handle
+        rrect(px - 10, py - 6, 6, 22, (255, 226, 150), radius=3)   # glass shine
+    elif holding == "marshmallow":
+        d.line([P(px - 30, py + 46), P(px + 34, py - 48)], fill=(146, 108, 72),
+               width=int(7 * s))
+        rrect(px + 36, py - 54, 16, 18, (255, 250, 240), radius=7)
+        ell(px + 36, py - 54, 16, 8, (244, 214, 178))
+    elif holding == "ball":
+        ell(px, py + 10, 34, 34, (238, 92, 92))
+        ell(px - 10, py, 12, 10, (250, 158, 158))
+        d.line([P(px - 30, py + 10), P(px + 30, py + 10)], fill=(206, 62, 62),
+               width=int(5 * s))
 
 
 def hare(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right",

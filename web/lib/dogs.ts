@@ -50,6 +50,15 @@ type Setting = {
   backdrop: string[];
   /** y of the dogs' paws. */
   groundY: number;
+  /**
+   * What the dogs wear here — the joke lands better when they are dressed for
+   * the place. toolkit.dog understands: shades | helmet | beanie | rainhat |
+   * partyhat.
+   */
+  outfit?: string;
+  /** What they hold: beer | marshmallow | ball. Omitted where it would look
+   *  daft, e.g. a beer inside a sealed space helmet. */
+  holding?: string;
 };
 
 export const SETTINGS: Setting[] = [
@@ -58,6 +67,8 @@ export const SETTINGS: Setting[] = [
     label: "Beach",
     sky: "day",
     groundY: 1010,
+    outfit: "shades",
+    holding: "beer",
     backdrop: [
       `tk.sun(d, 1660, 180, 112, rotate=12)`,
       `tk.sea(d, 700, phase=0.4)`,
@@ -70,6 +81,7 @@ export const SETTINGS: Setting[] = [
     label: "Mountains",
     sky: "day",
     groundY: 1010,
+    outfit: "beanie",
     backdrop: [
       `tk.mountain(d, 300, 880, 720, 560)`,
       `tk.mountain(d, 780, 890, 520, 400)`,
@@ -82,6 +94,7 @@ export const SETTINGS: Setting[] = [
     label: "Park",
     sky: "day",
     groundY: 1010,
+    holding: "ball",
     backdrop: [
       `tk.sun(d, 250, 190, 100, rotate=18)`,
       `tk.cloud(d, 900, 230, 1.0)`,
@@ -94,6 +107,8 @@ export const SETTINGS: Setting[] = [
     label: "Night camp",
     sky: "night",
     groundY: 1010,
+    outfit: "beanie",
+    holding: "marshmallow",
     backdrop: [
       `tk.stars(d, n=130, seed=11, area=(0, 0, 1920, 820))`,
       `tk.mountain(d, 1560, 900, 760, 460, color=(74, 78, 104), shade=(58, 62, 86))`,
@@ -105,6 +120,7 @@ export const SETTINGS: Setting[] = [
     label: "Rainy day",
     sky: "day",
     groundY: 1010,
+    outfit: "rainhat",
     backdrop: [
       `tk.cloud(d, 700, 220, 1.8, color=(186, 198, 216))`,
       `tk.cloud(d, 1400, 280, 1.4, color=(196, 206, 222))`,
@@ -118,6 +134,7 @@ export const SETTINGS: Setting[] = [
     label: "Moon",
     sky: "night",
     groundY: 1010,
+    outfit: "helmet",
     backdrop: [
       `tk.stars(d, n=150, seed=23, area=(0, 0, 1920, 860))`,
       `tk.planet(d, 1620, 300, 150, face=False)`,
@@ -219,6 +236,38 @@ function pickSetting(seed: string, requested?: string, title = "", body = ""): S
   );
 }
 
+/**
+ * One `tk.dog(...)` call.
+ *
+ * Every scene draws the same two dogs, so building the call in one place is
+ * what stops a costume from being applied to the title card and forgotten on
+ * the punchline — they have to stay dressed the same all the way through.
+ */
+function dogCall(
+  setting: Setting,
+  which: 0 | 1,
+  x: number,
+  y: number,
+  scale: number,
+  opts: { speaking?: boolean; expression: string; costume?: boolean } = {
+    expression: "happy",
+  },
+): string {
+  const look = LOOKS[which];
+  const dressed = opts.costume !== false;
+  const parts = [
+    `tk.dog(d, ${x}, ${y}, ${scale}`,
+    `facing="${which === 0 ? "right" : "left"}"`,
+    `coat=${look.coat}`,
+    `collar=${look.collar}`,
+    `speaking=${opts.speaking ? "True" : "False"}`,
+    `expression=${py(opts.expression)}`,
+  ];
+  if (dressed && setting.outfit) parts.push(`outfit=${py(setting.outfit)}`);
+  if (dressed && setting.holding) parts.push(`holding=${py(setting.holding)}`);
+  return parts.join(", ") + ")";
+}
+
 /** One dialogue beat: both dogs, only the speaker's muzzle open. */
 function beat(
   setting: Setting,
@@ -227,8 +276,14 @@ function beat(
   expression: string,
 ): string[] {
   const y = setting.groundY;
-  const left = `tk.dog(d, 470, ${y}, 1.15, facing="right", coat=${LOOKS[0].coat}, collar=${LOOKS[0].collar}, speaking=${speakerIdx === 0 ? "True" : "False"}, expression=${py(speakerIdx === 0 ? expression : "happy")})`;
-  const right = `tk.dog(d, 1450, ${y}, 1.15, facing="left", coat=${LOOKS[1].coat}, collar=${LOOKS[1].collar}, speaking=${speakerIdx === 1 ? "True" : "False"}, expression=${py(speakerIdx === 1 ? expression : "happy")})`;
+  const left = dogCall(setting, 0, 470, y, 1.15, {
+    speaking: speakerIdx === 0,
+    expression: speakerIdx === 0 ? expression : "happy",
+  });
+  const right = dogCall(setting, 1, 1450, y, 1.15, {
+    speaking: speakerIdx === 1,
+    expression: speakerIdx === 1 ? expression : "happy",
+  });
   // the bubble sits over the speaker's side so the eye goes to the right dog
   const bx = speakerIdx === 0 ? 660 : 1240;
 
@@ -282,8 +337,8 @@ export function buildDogRenderScenes(
       `def scene_01():`,
       `    img, d = tk.canvas("${setting.sky}")`,
       ...setting.backdrop.map((b) => `    ${b}`),
-      `    tk.dog(d, 470, ${y}, 1.15, facing="right", coat=${LOOKS[0].coat}, collar=${LOOKS[0].collar}, expression="happy")`,
-      `    tk.dog(d, 1450, ${y}, 1.15, facing="left", coat=${LOOKS[1].coat}, collar=${LOOKS[1].collar}, expression="smug")`,
+      `    ${dogCall(setting, 0, 470, y, 1.15, { expression: "happy" })}`,
+      `    ${dogCall(setting, 1, 1450, y, 1.15, { expression: "smug" })}`,
       `    tk.title_text(d, (960, 190), ${py(wrap(title, 22))}, 116, fill=P["white"], stroke=16)`,
       `    tk.speech_pop(d, 960, 430, ${py(`${speakers[0]} & ${speakers[1] ?? speakers[0]}`)}, 56, fill=P["accent"])`,
       `    return tk.vignette(img)`,
@@ -315,8 +370,11 @@ export function buildDogRenderScenes(
       // Both dogs sign off together, sitting low-left. Every line of text is
       // stacked above them and left of the end-card zone, so nothing lands on a
       // face and nothing lands under YouTube's subscribe card.
-      `    tk.dog(d, 350, 1030, 1.0, facing="right", coat=${LOOKS[0].coat}, collar=${LOOKS[0].collar}, expression="laugh", speaking=True)`,
-      `    tk.dog(d, 780, 1030, 1.0, facing="left", coat=${LOOKS[1].coat}, collar=${LOOKS[1].collar}, expression="smug")`,
+      // Undressed here on purpose: the outro is its own starry place, not the
+      // episode's setting, so a space helmet or a beach beer would be stranded
+      // in a scene that no longer explains it.
+      `    ${dogCall(setting, 0, 350, 1030, 1.0, { expression: "laugh", speaking: true, costume: false })}`,
+      `    ${dogCall(setting, 1, 780, 1030, 1.0, { expression: "smug", costume: false })}`,
       `    tk.title_text(d, (860, 150), "Same time tomorrow?", 88, fill=P["accent"], stroke=14)`,
       `    tk.title_text(d, (860, 320), "More dad jokes every week", 54, fill=P["white"], stroke=11)`,
       `    tk.speech_pop(d, 700, 470, "LIKE + SUBSCRIBE", 58, fill=P["rocket_red"], text_fill=P["white"])`,
