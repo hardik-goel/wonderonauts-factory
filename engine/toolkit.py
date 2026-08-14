@@ -560,6 +560,55 @@ def kid(d: ScaledDraw, x: int, y: int, scale: float = 1.0, skin=None, shirt=None
                 20, 160, fill=ink)
 
 
+def sprite_state(speaking: bool, expression: str) -> str:
+    """Which sprite file a beat wants.
+
+    The four states exist because they are the ones the dialogue actually needs:
+    who is talking, who just landed the punchline, and who is unimpressed.
+    """
+    if speaking:
+        return "laugh" if expression == "laugh" else "talk"
+    return "smug" if expression in ("smug", "deadpan") else "idle"
+
+
+def character(img: Image.Image, d: ScaledDraw, who: str, x: int, y: int,
+              scale: float = 1.0, facing: str = "right", speaking: bool = False,
+              expression: str = "happy", outfit=None, holding=None, **kw):
+    """Draw a lead character, preferring sprite art and falling back to vectors.
+
+    One entry point so a scene never has to know which it got. The lookup walks
+    from most specific to least:
+
+        goofy/space-talk   costume art, if it has been drawn
+        goofy/talk         plain art, costume dropped
+        tk.dog(...)        vector fallback
+
+    That ordering is what makes costumes additive later: drop a
+    `<name>/<outfit>-<state>.png` in and it starts being used, with no code
+    change. Until any sprite exists at all, every episode renders exactly as it
+    did before.
+
+    NOTE: in sprite mode the vector `outfit`/`holding` kit is NOT drawn on top.
+    Those shapes are positioned against the vector body's geometry and would sit
+    wrong on painted art, so a costume only appears once costume art exists.
+    """
+    state = sprite_state(speaking, expression)
+    names = []
+    if outfit:
+        names.append(f"{who}/{outfit}-{state}")
+    names.append(f"{who}/{state}")
+
+    for name in names:
+        if has_sprite(name):
+            # Sprites are authored at roughly the vector dog's sitting height,
+            # so the same `scale` a scene already passes keeps the two modes
+            # interchangeable without every caller being rewritten.
+            return sprite(img, name, x, y, int(round(360 * scale)), facing=facing)
+
+    return dog(d, x, y, scale, facing=facing, speaking=speaking,
+               expression=expression, outfit=outfit, holding=holding, **kw)
+
+
 def dog(d: ScaledDraw, x: int, y: int, scale: float = 1.0, facing: str = "right",
         coat=None, ear=None, speaking: bool = False, expression: str = "happy",
         collar=None, tongue: bool = True, outfit=None, holding=None,

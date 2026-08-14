@@ -284,8 +284,11 @@ function dogCall(
 ): string {
   const look = LOOKS[which];
   const dressed = opts.costume !== false;
+  // tk.character picks sprite art when it exists and falls back to the vector
+  // dog when it does not, so the same emitted call works either way and an
+  // episode does not have to know which one it got.
   const parts = [
-    `tk.dog(d, ${x}, ${y}, ${scale}`,
+    `tk.character(img, d, ${py(look.name.toLowerCase())}, ${x}, ${y}, ${scale}`,
     `facing="${which === 0 ? "right" : "left"}"`,
     `coat=${look.coat}`,
     `collar=${look.collar}`,

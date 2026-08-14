@@ -122,7 +122,28 @@ Full character definitions are in [`CAST.md`](CAST.md).
 
 ## Status
 
-`tk.sprite()` is implemented and verified end to end — scaling, anchoring and mirroring
-all confirmed against a real frame. **No sprite art exists yet**, so nothing calls it: the
-dad-jokes mode still renders with the vector `dog()`. Adding the eight files above and
-switching `dogCall()` in `web/lib/dogs.ts` to emit `tk.sprite(...)` is the remaining work.
+Fully wired. Episodes emit `tk.character(...)`, which resolves art most-specific first:
+
+```
+goofy/space-talk   costume art, if it has been drawn
+goofy/talk         plain art, costume dropped
+tk.dog(...)        vector fallback
+```
+
+All three branches are verified. **No sprite art is committed**, so every episode
+currently takes the third branch and renders exactly as before. Drop
+`assets/sprites/goofy/talk.png` in and that dog starts using it on the next render — no
+code change, no redeploy of the engine.
+
+Two consequences of switching a dog to sprites, both by design:
+
+- **Costumes disappear until costume art exists.** The vector `outfit`/`holding` shapes
+  are positioned against the vector body's geometry and would sit wrong on painted art,
+  so they are not drawn over a sprite. A sprite'd dog in the moon setting is a dog with
+  no space helmet until `goofy/helmet-talk.png` exists.
+- **Name tags are not drawn.** Placing them correctly needs real art to measure against;
+  doing it blind would risk stamping a tag across a face. The blank tag in the art stays
+  blank for now.
+
+Because the fallback is per-file, a half-finished set degrades unevenly — Goofy in
+painted art beside a vector Woofy. Add all four files for a dog before rendering.
