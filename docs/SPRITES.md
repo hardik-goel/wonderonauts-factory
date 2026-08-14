@@ -78,33 +78,59 @@ nothing was removed, which is the signal that the background was not flat enough
 
 ### Prompts
 
-One per file. Keep the first paragraph identical every time — that is what holds the
-character steady across the set.
+Eight prompts. The **identity block is byte-identical** within a dog's four — that
+repetition is what stops the character drifting between expressions, and drift is exactly
+what would read as a jump cut when consecutive scenes swap one file for another in the
+same position. Change only the sentence after `POSE AND EXPRESSION:`.
 
-> **Goofy, base:** A friendly cartoon golden retriever puppy sitting upright, three-quarter
-> view facing right, warm golden-tan fluffy fur, cream muzzle and chest, big dark round
-> eyes with bright catchlights, soft rounded ears, wearing a blue collar with a small
-> plain bone-shaped tag with NO writing on it. Children's picture-book illustration style,
-> soft shading, clean bold outlines. Full body including both front paws. Centred on a
-> completely flat plain mid-grey background, no shadow, no scenery, no text anywhere.
-> **[EXPRESSION]**
+Recommended settings: square aspect ratio (1:1), flat background colour `#8C8C8C`, and a
+flat-illustration model rather than a photoreal one.
 
-> **Woofy, base:** A friendly cartoon border collie puppy sitting upright, three-quarter
-> view facing right, fluffy near-black fur with a white blaze down the face, white muzzle,
-> white chest and white front paws, big dark round eyes with bright catchlights, soft
-> floppy ears, wearing a red collar with a small plain bone-shaped tag with NO writing on
-> it. Children's picture-book illustration style, soft shading, clean bold outlines. Full
-> body including both front paws. Centred on a completely flat plain mid-grey background,
-> no shadow, no scenery, no text anywhere. **[EXPRESSION]**
+#### Goofy — identity block
 
-Swap `[EXPRESSION]` for each of the four:
+> A single friendly cartoon golden retriever puppy, sitting upright on his haunches, seen
+> in three-quarter view facing to the RIGHT of frame. Warm golden-tan fluffy fur with
+> slightly darker gold ears, a cream-coloured muzzle, cream chest and cream front paws. A
+> large rounded head with a short soft snout and a big dark nose. Big round dark-brown
+> eyes with bright white catchlights, set wide and friendly. Long soft floppy ears hanging
+> beside the head. Wearing a plain royal-blue collar with a small blank bone-shaped tag —
+> the tag is completely empty with absolutely no writing, letters or numbers on it.
+> Full body visible from the tips of both ears down to both front paws, nothing cropped.
+> Children's picture-book illustration style: clean confident outlines, soft cel shading,
+> warm friendly proportions, slightly oversized head. Even flat lighting, no harsh
+> shadows. Centred in frame with a small even margin, on a completely flat plain solid
+> mid-grey background. No drop shadow, no ground, no scenery, no props, no other animals,
+> no text, no watermark, no border.
+> **POSE AND EXPRESSION: [see table]**
 
-| File | `[EXPRESSION]` |
+#### Woofy — identity block
+
+> A single friendly cartoon border collie puppy, sitting upright on his haunches, seen in
+> three-quarter view facing to the RIGHT of frame. Fluffy near-black fur with a crisp
+> white blaze running down the centre of the face between the eyes, a white muzzle, a
+> broad white chest and white front paws, and a white tip on the tail. A large rounded
+> head with a short soft snout and a big dark nose. Big round dark-brown eyes with bright
+> white catchlights. Soft floppy black ears hanging beside the head. Wearing a plain red
+> collar with a small blank bone-shaped tag — the tag is completely empty with absolutely
+> no writing, letters or numbers on it. Full body visible from the tips of both ears down
+> to both front paws, nothing cropped. Children's picture-book illustration style: clean
+> confident outlines, soft cel shading, warm friendly proportions, slightly oversized
+> head. Even flat lighting, no harsh shadows. Centred in frame with a small even margin,
+> on a completely flat plain solid mid-grey background. No drop shadow, no ground, no
+> scenery, no props, no other animals, no text, no watermark, no border.
+> **POSE AND EXPRESSION: [see table]**
+
+#### The four endings
+
+| File | `POSE AND EXPRESSION:` |
 |---|---|
-| `idle` | Mouth closed in a gentle smile, calm and attentive, listening. |
-| `talk` | Mouth open mid-speech with the tongue visible, eyebrows up, clearly talking. |
-| `laugh` | Mouth open wide laughing, eyes squeezed shut into happy arcs, head tilted back slightly. |
-| `smug` | Mouth closed, one eyebrow raised, half-lidded knowing look, unimpressed. |
+| `idle` | Mouth closed in a soft contented smile, eyes open and attentive, head level, ears relaxed — quietly listening to someone off to the right. |
+| `talk` | Mouth open in mid-sentence with the lower jaw dropped and the pink tongue visible inside, eyebrows raised, eyes bright and wide — clearly in the middle of saying something. |
+| `laugh` | Mouth open wide in a big delighted laugh, tongue showing, eyes squeezed shut into two happy upward arcs, head tilted back a little, ears lifted — helpless laughter. |
+| `smug` | Mouth closed in a small crooked knowing smirk, one eyebrow raised higher than the other, eyes half-lidded and looking sideways — thoroughly unimpressed. |
+
+Filenames: `assets/sprites/goofy/idle.png`, `.../talk.png`, `.../laugh.png`, `.../smug.png`,
+then the same four under `woofy/`.
 
 ## Authoring notes
 

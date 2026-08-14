@@ -45,9 +45,14 @@ export const DOG_VOICES = [
 type Setting = {
   id: string;
   label: string;
-  sky: "day" | "sunset" | "night";
+  sky: "day" | "sunset" | "night" | "plain";
   /** Drawn before the characters. */
   backdrop: string[];
+  /**
+   * Drawn AFTER the characters. A car dashboard has to sit in front of the dogs
+   * or they look welded to the bonnet; everything else leaves this empty.
+   */
+  foreground?: string[];
   /** y of the dogs' paws. */
   groundY: number;
   /**
@@ -139,6 +144,96 @@ export const SETTINGS: Setting[] = [
       `tk.stars(d, n=150, seed=23, area=(0, 0, 1920, 860))`,
       `tk.planet(d, 1620, 300, 150, face=False)`,
       `tk.ground(d, 890, color=(120, 122, 138), dark=(96, 98, 116))`,
+    ],
+  },
+  // ---- interiors. These use canvas("plain") and paint their own room, since
+  // an indoor scene wants a wall rather than a sky.
+  {
+    id: "livingroom",
+    label: "Living room",
+    sky: "plain",
+    groundY: 1020,
+    holding: "mug",
+    backdrop: [
+      `tk.room(d, 880, wall=(238, 226, 208), floor=(196, 162, 126))`,
+      `tk.wallpaper_stripes(d, 880)`,
+      `tk.framed_art(d, 1180, 300, 210, 170, motif="paw")`,
+      `tk.shelf(d, 1560, 420, 340)`,
+      `tk.lamp(d, 210, 880, 1.0)`,
+      `tk.rug(d, 960, 1046, 1120, 120)`,
+      `tk.couch(d, 960, 1010, 1080, 250)`,
+    ],
+  },
+  {
+    id: "kitchen",
+    label: "Kitchen",
+    sky: "plain",
+    groundY: 1000,
+    outfit: "chef",
+    holding: "spatula",
+    backdrop: [
+      `tk.room(d, 820, wall=(226, 232, 224), floor=(178, 176, 170))`,
+      `tk.window_view(d, 960, 330, 420, 300, mode="day")`,
+      `tk.fridge(d, 250, 1010, 0.86)`,
+      `tk.shelf(d, 1580, 360, 300, books=False)`,
+      `tk.counter(d, 1010, 560, 1920, doors=4)`,
+    ],
+  },
+  {
+    id: "car",
+    label: "Road trip",
+    sky: "plain",
+    groundY: 940,
+    outfit: "cap",
+    backdrop: [`tk.car_interior(d, 900, view="day")`],
+    // the dash and wheel belong in front of the dogs, not behind them
+    foreground: [`tk.car_foreground(d, 900, wheel_x=1470)`],
+  },
+  {
+    id: "office",
+    label: "Office",
+    sky: "plain",
+    groundY: 1010,
+    holding: "mug",
+    backdrop: [
+      `tk.room(d, 860, wall=(224, 228, 236), floor=(150, 146, 152))`,
+      // Dressing sits low and centre-right on purpose: the speech bubble owns
+      // the top-left of every frame, and anything put up there is never seen.
+      `tk.window_view(d, 1520, 300, 400, 280, mode="day")`,
+      `tk.framed_art(d, 960, 590, 190, 150, motif="bone")`,
+      `tk.shelf(d, 200, 600, 260)`,
+    ],
+    // The desk goes in FRONT and high enough to cut across them. Behind the
+    // dogs it vanished entirely and they read as sitting on the floor of an
+    // empty room; a thin strip at their paws read as skirting board.
+    foreground: [
+      `tk.desk(d, 950)`,
+      `tk.monitor(d, 960, 950, 0.62)`,
+    ],
+  },
+  {
+    id: "snowy",
+    label: "Snowy street",
+    sky: "day",
+    groundY: 1010,
+    outfit: "beanie",
+    holding: "mug",
+    backdrop: [
+      `tk.skyline(d, 880, seed=7, color=(140, 156, 186), lit=False)`,
+      `tk.snow_ground(d, 880)`,
+      `tk.snowfall(d, area=(0, 0, 1920, 1080), n=110, seed=12)`,
+    ],
+  },
+  {
+    id: "rooftop",
+    label: "Rooftop",
+    sky: "sunset",
+    groundY: 1010,
+    holding: "beer",
+    backdrop: [
+      `tk.skyline(d, 900, seed=3, color=(74, 66, 104), lit=True)`,
+      `tk.ground(d, 900, color=(96, 92, 108), dark=(78, 74, 90), hills=False)`,
+      `tk.string_lights(d, 120, sag=80, n=13)`,
     ],
   },
 ];
@@ -237,6 +332,14 @@ const SETTING_HINTS: [RegExp, string][] = [
   [/\b(rain|rainy|puddle|storm|umbrella|wet)\b/i, "rainy"],
   [/\b(space|moon|rocket|planet|astronaut)\b/i, "space"],
   [/\b(park|picnic|garden|walk)\b/i, "park"],
+  // Interiors. Checked after the outdoor ones so "a walk in the park" still
+  // goes outside rather than being dragged indoors by a stray "sofa".
+  [/\b(kitchen|cook|cooking|chef|noodle|pasta|recipe|bake|baking|dinner)\b/i, "kitchen"],
+  [/\b(car|drive|driving|road ?trip|traffic|seatbelt|steering)\b/i, "car"],
+  [/\b(office|work|meeting|email|boss|desk|deadline)\b/i, "office"],
+  [/\b(snow|snowy|winter|cold|freezing|scarf|ice)\b/i, "snowy"],
+  [/\b(roof|rooftop|city|skyline|sunset|evening)\b/i, "rooftop"],
+  [/\b(couch|sofa|living ?room|tv|telly|remote|home)\b/i, "livingroom"],
 ];
 
 function hintedSetting(text: string): Setting | undefined {
@@ -339,6 +442,7 @@ function beat(
     ...setting.backdrop.map((b) => `    ${b}`),
     `    ${left}`,
     `    ${right}`,
+    ...(setting.foreground ?? []).map((f) => `    ${f}`),
     `    tk.thought_bubble(d, ${bx}, 330, w=${bw}, h=${bh}, tail_to=(${speakerIdx === 0 ? 520 : 1400}, 640),`,
     `                      text=${py(wrapped)}, text_size=58)`,
   ];

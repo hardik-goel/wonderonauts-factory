@@ -1696,6 +1696,333 @@ def prism(d: ScaledDraw, x: int, y: int, size: float = 260, color=None):
     d.line([pts[0], pts[1]], fill=(255, 255, 255), width=10)
 
 
+# --------------------------------------------------------------------------
+# Interiors and set dressing
+#
+# The dad-jokes cast spends most of its time indoors, and every setting the
+# reference art suggests -- a couch, a kitchen, a car -- needs a room rather
+# than a sky. These are deliberately blunt: a few large flat shapes that read
+# instantly at Short size, with the detail carried by two or three props rather
+# than by texture.
+# --------------------------------------------------------------------------
+
+def room(d: ScaledDraw, floor_y: int = 880, wall=None, floor=None,
+         skirting: bool = True):
+    """Interior wall and floor. Use with canvas("plain")."""
+    w = wall or (238, 226, 208)
+    f = floor or (196, 162, 126)
+    d.rectangle([0, 0, W, floor_y], fill=w)
+    d.rectangle([0, floor_y, W, H], fill=f)
+    d.rectangle([0, floor_y, W, floor_y + 10], fill=_blend(f, PALETTE["ink"], 0.22))
+    if skirting:
+        d.rectangle([0, floor_y - 34, W, floor_y], fill=_blend(w, PALETTE["white"], 0.55))
+        d.rectangle([0, floor_y - 38, W, floor_y - 30], fill=_blend(w, PALETTE["ink"], 0.12))
+
+
+def wallpaper_stripes(d: ScaledDraw, floor_y: int = 880, color=None, step: int = 120):
+    """Faint vertical stripes, so a big flat wall is not a dead rectangle."""
+    c = color or (228, 214, 194)
+    for x in range(0, W, step):
+        d.rectangle([x, 0, x + step // 2, floor_y], fill=c)
+
+
+def couch(d: ScaledDraw, x: int, y: int, w: float = 900, h: float = 260,
+          color=None, cushions: int = 3):
+    """Sofa seen head-on, its seat at y. The characters sit in front of it."""
+    c = color or (150, 160, 186)
+    dark = _blend(c, PALETTE["ink"], 0.22)
+    light = _blend(c, PALETTE["white"], 0.16)
+    back_h = h * 1.15
+    d.rounded_rectangle([x - w / 2, y - h - back_h, x + w / 2, y - h * 0.2],
+                        radius=46, fill=c)
+    for i in range(cushions):                       # back cushions
+        cw = w / cushions
+        cx = x - w / 2 + cw * (i + 0.5)
+        d.rounded_rectangle([cx - cw * 0.42, y - h - back_h * 0.86,
+                             cx + cw * 0.42, y - h * 0.5], radius=34, fill=light)
+    d.rounded_rectangle([x - w / 2, y - h, x + w / 2, y], radius=38, fill=dark)
+    for arm in (-1, 1):                             # arms
+        d.rounded_rectangle([x + arm * w / 2 - 52, y - h - back_h * 0.55,
+                             x + arm * w / 2 + 52, y], radius=40, fill=dark)
+
+
+def rug(d: ScaledDraw, x: int, y: int, w: float = 900, h: float = 120, color=None):
+    c = color or (204, 122, 108)
+    d.ellipse([x - w / 2, y - h / 2, x + w / 2, y + h / 2], fill=c)
+    d.ellipse([x - w * 0.36, y - h * 0.30, x + w * 0.36, y + h * 0.30],
+              fill=_blend(c, PALETTE["white"], 0.22))
+
+
+def framed_art(d: ScaledDraw, x: int, y: int, w: float = 200, h: float = 160,
+               frame=None, mat=None, motif: str = "paw"):
+    """A picture on the wall. `motif`: paw | heart | bone | none."""
+    fr = frame or (140, 104, 72)
+    d.rectangle([x - w / 2, y - h / 2, x + w / 2, y + h / 2], fill=fr)
+    d.rectangle([x - w / 2 + 12, y - h / 2 + 12, x + w / 2 - 12, y + h / 2 - 12],
+                fill=mat or (250, 244, 232))
+    ink = PALETTE["ink"]
+    if motif == "paw":
+        d.ellipse([x - 26, y - 10, x + 26, y + 34], fill=_blend(ink, (255, 255, 255), 0.45))
+        for tx in (-30, -10, 12, 32):
+            d.ellipse([x + tx - 11, y - 40, x + tx + 11, y - 16],
+                      fill=_blend(ink, (255, 255, 255), 0.45))
+    elif motif == "heart":
+        d.ellipse([x - 30, y - 26, x + 2, y + 6], fill=(214, 96, 104))
+        d.ellipse([x - 2, y - 26, x + 30, y + 6], fill=(214, 96, 104))
+        d.polygon([(x - 28, y - 6), (x + 28, y - 6), (x, y + 36)], fill=(214, 96, 104))
+    elif motif == "bone":
+        for bx in (-30, 30):
+            d.ellipse([x + bx - 18, y - 18, x + bx + 18, y + 18], fill=(238, 226, 200))
+        d.rounded_rectangle([x - 32, y - 11, x + 32, y + 11], radius=8, fill=(238, 226, 200))
+
+
+def shelf(d: ScaledDraw, x: int, y: int, w: float = 340, books: bool = True,
+          plant: bool = True):
+    """Wall shelf with a row of books and a pot plant."""
+    d.rounded_rectangle([x - w / 2, y, x + w / 2, y + 16], radius=6, fill=(150, 112, 78))
+    if books:
+        bx = x - w / 2 + 24
+        for i, col in enumerate(((198, 86, 86), (86, 132, 196), (222, 176, 74),
+                                 (110, 178, 128), (168, 116, 196))):
+            bw = 22 + (i % 3) * 6
+            bh = 70 + (i % 2) * 18
+            d.rounded_rectangle([bx, y - bh, bx + bw, y], radius=5, fill=col)
+            bx += bw + 6
+    if plant:
+        px = x + w / 2 - 54
+        d.rounded_rectangle([px - 26, y - 40, px + 26, y], radius=8, fill=(196, 122, 92))
+        for a, r in ((-34, 44), (0, 56), (34, 44)):
+            d.ellipse([px + a - 20, y - 40 - r, px + a + 20, y - 40], fill=(96, 168, 110))
+
+
+def lamp(d: ScaledDraw, x: int, y: int, scale: float = 1.0, shade=None, glow: bool = True):
+    """Table lamp with its pool of light. `y` is the base."""
+    s = scale
+    sh = shade or (246, 216, 150)
+    if glow:
+        for r, t in ((260, 0.10), (190, 0.16), (130, 0.24)):
+            d.ellipse([x - r * s, y - 300 * s - r * s * 0.7,
+                       x + r * s, y - 300 * s + r * s * 0.7],
+                      fill=_blend((238, 226, 208), (255, 244, 206), t + 0.35))
+    d.rounded_rectangle([x - 14 * s, y - 190 * s, x + 14 * s, y], radius=8 * s,
+                        fill=(120, 96, 74))
+    d.ellipse([x - 54 * s, y - 26 * s, x + 54 * s, y + 10 * s], fill=(120, 96, 74))
+    d.polygon([(x - 86 * s, y - 190 * s), (x + 86 * s, y - 190 * s),
+               (x + 58 * s, y - 300 * s), (x - 58 * s, y - 300 * s)], fill=sh)
+    d.polygon([(x - 86 * s, y - 190 * s), (x - 40 * s, y - 190 * s),
+               (x - 24 * s, y - 300 * s), (x - 58 * s, y - 300 * s)],
+              fill=_blend(sh, PALETTE["white"], 0.35))
+
+
+def counter(d: ScaledDraw, y: int, x0: int = 0, x1: int = W, top=None, body=None,
+            doors: int = 4):
+    """Kitchen run: cupboard doors with a worktop across the top."""
+    b = body or (128, 158, 132)
+    t = top or (226, 216, 200)
+    d.rectangle([x0, y, x1, H], fill=b)
+    d.rectangle([x0, y - 26, x1, y], fill=t)
+    d.rectangle([x0, y - 30, x1, y - 24], fill=_blend(t, PALETTE["ink"], 0.18))
+    span = (x1 - x0) / max(1, doors)
+    for i in range(doors):
+        dx = x0 + span * i
+        d.rounded_rectangle([dx + 16, y + 22, dx + span - 16, H], radius=10,
+                            fill=_blend(b, PALETTE["white"], 0.10))
+        d.rounded_rectangle([dx + span / 2 - 26, y + 46, dx + span / 2 + 26, y + 56],
+                            radius=5, fill=_blend(b, PALETTE["ink"], 0.35))
+
+
+def fridge(d: ScaledDraw, x: int, y: int, scale: float = 1.0, color=None):
+    """Fridge with its door seam and a couple of magnets. `y` is the floor."""
+    s = scale
+    c = color or (232, 236, 240)
+    d.rounded_rectangle([x - 130 * s, y - 560 * s, x + 130 * s, y], radius=22 * s, fill=c)
+    d.rectangle([x - 130 * s, y - 372 * s, x + 130 * s, y - 362 * s],
+                fill=_blend(c, PALETTE["ink"], 0.16))
+    for hy in (-330, -400):
+        d.rounded_rectangle([x + 88 * s, y + hy * s, x + 106 * s, y + (hy + 120) * s],
+                            radius=8 * s, fill=_blend(c, PALETTE["ink"], 0.30))
+    d.rounded_rectangle([x - 92 * s, y - 520 * s, x - 30 * s, y - 462 * s],
+                        radius=6 * s, fill=(250, 214, 108))
+    d.ellipse([x + 6 * s, y - 512 * s, x + 54 * s, y - 464 * s], fill=(214, 96, 104))
+
+
+def window_view(d: ScaledDraw, x: int, y: int, w: float = 380, h: float = 300,
+                mode: str = "day", frame=None):
+    """A window onto something. `mode`: day | night | snow."""
+    fr = frame or (250, 246, 238)
+    sky_c = {"day": (150, 206, 246), "night": (28, 38, 84), "snow": (206, 218, 234)}[mode]
+    d.rectangle([x - w / 2 - 16, y - h / 2 - 16, x + w / 2 + 16, y + h / 2 + 16], fill=fr)
+    d.rectangle([x - w / 2, y - h / 2, x + w / 2, y + h / 2], fill=sky_c)
+    if mode == "night":
+        rnd = random.Random(9)
+        for _ in range(26):
+            sx = x - w / 2 + rnd.random() * w
+            sy = y - h / 2 + rnd.random() * h
+            d.ellipse([sx - 3, sy - 3, sx + 3, sy + 3], fill=(255, 250, 220))
+    else:
+        d.ellipse([x - w * 0.46, y + h * 0.10, x + w * 0.10, y + h / 2],
+                  fill=(120, 182, 122) if mode == "day" else (238, 244, 250))
+        d.ellipse([x - w * 0.05, y + h * 0.18, x + w * 0.50, y + h / 2],
+                  fill=(96, 164, 108) if mode == "day" else (228, 236, 246))
+    d.rectangle([x - 7, y - h / 2, x + 7, y + h / 2], fill=fr)
+    d.rectangle([x - w / 2, y - 7, x + w / 2, y + 7], fill=fr)
+
+
+def car_interior(d: ScaledDraw, dash_y: int = 900, body=None, view: str = "day"):
+    """Front seats, seen from the bonnet: windscreen, dashboard, wheel, mirror.
+
+    Drawn in two halves -- everything behind the characters here, and
+    car_foreground() for the dashboard and wheel that must sit in front of them.
+    """
+    c = body or (188, 72, 66)
+    d.rectangle([0, 0, W, H], fill=_blend(c, PALETTE["ink"], 0.35))
+    sky_c = (150, 206, 246) if view == "day" else (30, 40, 88)
+    x0, x1, y0, y1 = 120, W - 120, 90, dash_y - 40
+    d.rounded_rectangle([x0, y0, x1, y1], radius=60, fill=sky_c)
+
+    # A road running to a vanishing point, not two green ellipses. The verge,
+    # the tarmac and the dashes all converge on the same point, which is what
+    # makes the view read as movement rather than as scenery pasted behind glass.
+    horizon = y0 + (y1 - y0) * 0.52
+    vp_x = W / 2
+    if view == "day":
+        cloud(d, 620, 220, 0.9)
+        cloud(d, 1340, 190, 0.7)
+        for hx, hw, hh in ((420, 760, 150), (1180, 900, 190), (1700, 620, 120)):
+            d.ellipse([hx - hw / 2, horizon - hh, hx + hw / 2, horizon + 40],
+                      fill=(120, 168, 128))
+    else:
+        stars(d, n=60, seed=17, area=(x0 + 40, y0 + 30, x1 - 40, horizon - 20))
+    d.rectangle([x0, horizon, x1, y1], fill=(122, 174, 128) if view == "day"
+                else (44, 58, 78))                                    # verge
+    d.polygon([(vp_x - 26, horizon), (vp_x + 26, horizon),
+               (x1 + 260, y1), (x0 - 260, y1)],
+              fill=(96, 100, 112) if view == "day" else (58, 62, 76))  # tarmac
+    for i in range(5):                                                # centre line
+        t0 = 0.16 + i * 0.19
+        t1 = t0 + 0.10
+        w0, w1_ = 4 + t0 * 46, 4 + t1 * 46
+        d.polygon([(vp_x - w0 / 2, horizon + t0 * (y1 - horizon)),
+                   (vp_x + w0 / 2, horizon + t0 * (y1 - horizon)),
+                   (vp_x + w1_ / 2, horizon + t1 * (y1 - horizon)),
+                   (vp_x - w1_ / 2, horizon + t1 * (y1 - horizon))],
+                  fill=(246, 240, 214))
+
+
+def car_foreground(d: ScaledDraw, dash_y: int = 900, body=None, wheel_x: int = 1450):
+    """Dashboard and steering wheel — drawn after the characters."""
+    c = body or (188, 72, 66)
+    dark = _blend(c, PALETTE["ink"], 0.45)
+    d.rounded_rectangle([-40, dash_y, W + 40, H + 60], radius=40, fill=dark)
+    d.rounded_rectangle([-40, dash_y, W + 40, dash_y + 30], radius=12,
+                        fill=_blend(dark, PALETTE["white"], 0.16))
+    # instrument binnacle, so the dash is not one flat slab
+    d.rounded_rectangle([wheel_x - 150, dash_y + 44, wheel_x + 150, dash_y + 150],
+                        radius=22, fill=_blend(dark, PALETTE["ink"], 0.22))
+    for gx in (-78, 0, 78):
+        d.ellipse([wheel_x + gx - 40, dash_y + 56, wheel_x + gx + 40, dash_y + 136],
+                  fill=_blend(dark, PALETTE["ink"], 0.45))
+        d.ellipse([wheel_x + gx - 30, dash_y + 66, wheel_x + gx + 30, dash_y + 126],
+                  fill=(126, 152, 176))
+
+    # The wheel is a RING -- an ellipse over an ellipse left a dark disc that
+    # read as a hole in the dashboard rather than as something being held.
+    rim = _blend(dark, PALETTE["ink"], 0.40)
+    d.ellipse([wheel_x - 168, dash_y - 130, wheel_x + 168, dash_y + 206], fill=rim)
+    d.ellipse([wheel_x - 132, dash_y - 94, wheel_x + 132, dash_y + 170], fill=dark)
+    d.rounded_rectangle([wheel_x - 138, dash_y + 20, wheel_x + 138, dash_y + 56],
+                        radius=16, fill=rim)                          # spokes
+    d.rounded_rectangle([wheel_x - 20, dash_y + 30, wheel_x + 20, dash_y + 170],
+                        radius=14, fill=rim)
+    d.ellipse([wheel_x - 46, dash_y + 6, wheel_x + 46, dash_y + 82],
+              fill=_blend(rim, PALETTE["white"], 0.12))                # boss
+
+    for pillar in (0, W):                                             # A-pillars
+        d.rounded_rectangle([pillar - 74, -40, pillar + 74, dash_y + 40],
+                            radius=40, fill=dark)
+    d.rounded_rectangle([W / 2 - 110, 40, W / 2 + 110, 132], radius=22, fill=dark)
+    d.rounded_rectangle([W / 2 - 96, 52, W / 2 + 96, 120], radius=16, fill=(120, 146, 170))
+
+
+def desk(d: ScaledDraw, y: int, color=None):
+    """Desk seen head-on: surface band plus a front panel down to the frame edge.
+
+    The panel is not decoration. Stopping at a thin strip let the characters'
+    contact shadows show underneath, which made them look afloat rather than
+    seated behind the desk.
+    """
+    c = color or (168, 126, 90)
+    d.rectangle([-40, y + 40, W + 40, H + 40], fill=_blend(c, PALETTE["ink"], 0.34))
+    d.rounded_rectangle([-40, y, W + 40, y + 52], radius=14, fill=c)
+    d.rectangle([-40, y + 44, W + 40, y + 58], fill=_blend(c, PALETTE["ink"], 0.20))
+
+
+def monitor(d: ScaledDraw, x: int, y: int, scale: float = 1.0, screen=None):
+    """Desktop monitor standing on a surface at y."""
+    s = scale
+    d.rounded_rectangle([x - 20 * s, y - 70 * s, x + 20 * s, y], radius=8 * s,
+                        fill=(96, 102, 118))
+    d.ellipse([x - 70 * s, y - 18 * s, x + 70 * s, y + 10 * s], fill=(96, 102, 118))
+    d.rounded_rectangle([x - 190 * s, y - 320 * s, x + 190 * s, y - 66 * s],
+                        radius=14 * s, fill=(70, 76, 92))
+    d.rounded_rectangle([x - 174 * s, y - 304 * s, x + 174 * s, y - 82 * s],
+                        radius=8 * s, fill=screen or (126, 178, 222))
+
+
+def skyline(d: ScaledDraw, y: int, seed: int = 4, color=None, lit: bool = True):
+    """A row of blocky buildings along y."""
+    c = color or (58, 64, 96)
+    rnd = random.Random(seed)
+    x = -40
+    while x < W + 40:
+        bw = rnd.randint(110, 210)
+        bh = rnd.randint(160, 420)
+        d.rectangle([x, y - bh, x + bw, y], fill=c)
+        if lit:
+            for wy in range(int(y - bh + 26), int(y - 20), 46):
+                for wx in range(int(x + 18), int(x + bw - 22), 40):
+                    if rnd.random() < 0.55:
+                        d.rectangle([wx, wy, wx + 18, wy + 24], fill=(250, 222, 138))
+        x += bw + rnd.randint(6, 26)
+
+
+def string_lights(d: ScaledDraw, y: int, sag: float = 70, n: int = 14, seed: int = 2):
+    """A drooping run of bulbs across the top of the frame."""
+    rnd = random.Random(seed)
+    pts = []
+    for i in range(n + 1):
+        t = i / n
+        px = t * W
+        py = y + math.sin(t * math.pi) * sag
+        pts.append((px, py))
+    d.line(pts, fill=(72, 68, 62), width=6)
+    for i, (px, py) in enumerate(pts):
+        col = ((250, 214, 108), (246, 152, 120), (154, 214, 236))[i % 3]
+        d.ellipse([px - 15, py, px + 15, py + 34], fill=col)
+        d.ellipse([px - 7, py + 6, px + 3, py + 18], fill=_blend(col, PALETTE["white"], 0.55))
+
+
+def snowfall(d: ScaledDraw, area=(0, 0, W, H), n: int = 90, seed: int = 5,
+             size=(6, 16)):
+    rnd = random.Random(seed)
+    x0, y0, x1, y1 = area
+    for _ in range(n):
+        x = x0 + rnd.random() * (x1 - x0)
+        y = y0 + rnd.random() * (y1 - y0)
+        r = rnd.uniform(*size) / 2
+        d.ellipse([x - r, y - r, x + r, y + r], fill=(250, 252, 255))
+
+
+def snow_ground(d: ScaledDraw, y: int, color=None, drifts: bool = True):
+    c = color or (244, 248, 253)
+    d.rectangle([0, y, W, H], fill=c)
+    if drifts:
+        for cx, w_, h_ in ((260, 620, 90), (1080, 760, 76), (1740, 520, 96)):
+            d.ellipse([cx - w_ / 2, y - h_ / 2, cx + w_ / 2, y + h_ / 2],
+                      fill=_blend(c, PALETTE["white"], 0.6))
+    d.rectangle([0, y, W, y + 8], fill=_blend(c, (168, 190, 220), 0.5))
+
+
 def thought_bubble(d: ScaledDraw, x: int, y: int, w: int = 620, h: int = 300,
                    tail_to=None, text: str = "", text_size: int = 62,
                    fill=None, text_fill=None):

@@ -62,18 +62,28 @@ Ordered by how much each would improve the videos. Everything here is currently 
 
 ### Settings (10)
 
-| # | Setting | Why it earns its place |
+Six are **built and live** — drawn from code, no art needed, no cost. The remaining four
+are still open.
+
+| # | Setting | Status |
 |---|---|---|
-| 1 | **Living room / couch** | The reference's home base. Warm lamp, cushions, framed GOOD VIBES art. The default "two dogs chatting" scene. |
-| 2 | **Kitchen** | Pairs with the chef outfit, which currently has nowhere to be. Fridge, counter, herb pots. |
-| 3 | **Car interior** | Windscreen, steering wheel, seatbelts, mirror. Strong Short framing — both faces in one tight shot. |
-| 4 | **Back garden / porch** | Fence, grass, a ball. Cheaper than the park and reads as home. |
-| 5 | **Diner booth** | Table between them, mugs, menu. Naturally seats two facing each other. |
-| 6 | **Office / desk** | Monitors, sticky notes, swivel chairs. Unlocks a whole genre of jokes. |
-| 7 | **Vet waiting room** | Inherently funny; Woofy's dread is the joke. |
-| 8 | **Pet shop aisle** | Shelves of toys and treats. Lots of prop surface. |
-| 9 | **Snowy street** | Scarves, breath clouds, a snowman. Seasonal content. |
-| 10 | **Rooftop at sunset** | City skyline, string lights. Good for the outro card. |
+| 1 | **Living room / couch** | ✅ Built. Couch, lamp with light pool, framed paw art, book shelf, rug. Dogs hold mugs. |
+| 2 | **Kitchen** | ✅ Built. Fridge with magnets, window, counter run, shelf. Chef outfit + spatula. |
+| 3 | **Car interior** | ✅ Built. Windscreen onto a road with a receding centre line, dashboard with gauges, steering wheel, rear-view mirror, A-pillars. Caps on. |
+| 4 | **Office / desk** | ✅ Built. Desk cutting across the frame, monitor, window, shelf, framed bone. Mugs. |
+| 5 | **Snowy street** | ✅ Built. Skyline, snow drifts, falling snow. Beanies + mugs. |
+| 6 | **Rooftop at sunset** | ✅ Built. Lit skyline, string lights, sunset sky. Beers. |
+| 7 | **Back garden / porch** | Open. Fence, grass, a ball. Cheaper than the park and reads as home. |
+| 8 | **Diner booth** | Open. Table between them, mugs, menu. Naturally seats two facing each other. |
+| 9 | **Vet waiting room** | Open. Inherently funny; Woofy's dread is the joke. |
+| 10 | **Pet shop aisle** | Open. Shelves of toys and treats. Lots of prop surface. |
+
+Settings need **no reference art** — they are toolkit primitives. The characters are the
+only thing that needs drawn artwork; see [`SPRITES.md`](SPRITES.md).
+
+A setting may declare a `foreground` as well as a `backdrop`: calls drawn *after* the
+characters. The car dashboard and the office desk both need it, or the dogs end up welded
+to the bonnet and floating in an empty room respectively.
 
 ### Props and outfits (10)
 
