@@ -56,6 +56,56 @@ once the base set is proven, cheapest first:
 
 Decide that after seeing the base eight in a real frame.
 
+## Making them, free
+
+No paid service is involved. Generate the images in whatever chat image tool made the
+cast reference, on a **plain flat background**, then cut them out locally:
+
+```bash
+python3 scripts/cutout.py ~/Downloads/goofy-talk.png assets/sprites/goofy/talk.png
+```
+
+`scripts/cutout.py` floods inward from the edges rather than deleting every pixel that
+matches the background colour — which is what keeps Woofy's white blaze and white chest
+intact instead of punching holes through them. It trims to the character and leaves a
+small transparent margin. Pass `--check` to see the result without writing, and
+`--thresh` to adjust tolerance if edges are eaten (lower it) or the background survives
+(raise it).
+
+Ask for a **flat mid-grey or plain white background** and no drop shadow. Gradients,
+vignettes and painted scenery cannot be keyed this way; the script warns when almost
+nothing was removed, which is the signal that the background was not flat enough.
+
+### Prompts
+
+One per file. Keep the first paragraph identical every time — that is what holds the
+character steady across the set.
+
+> **Goofy, base:** A friendly cartoon golden retriever puppy sitting upright, three-quarter
+> view facing right, warm golden-tan fluffy fur, cream muzzle and chest, big dark round
+> eyes with bright catchlights, soft rounded ears, wearing a blue collar with a small
+> plain bone-shaped tag with NO writing on it. Children's picture-book illustration style,
+> soft shading, clean bold outlines. Full body including both front paws. Centred on a
+> completely flat plain mid-grey background, no shadow, no scenery, no text anywhere.
+> **[EXPRESSION]**
+
+> **Woofy, base:** A friendly cartoon border collie puppy sitting upright, three-quarter
+> view facing right, fluffy near-black fur with a white blaze down the face, white muzzle,
+> white chest and white front paws, big dark round eyes with bright catchlights, soft
+> floppy ears, wearing a red collar with a small plain bone-shaped tag with NO writing on
+> it. Children's picture-book illustration style, soft shading, clean bold outlines. Full
+> body including both front paws. Centred on a completely flat plain mid-grey background,
+> no shadow, no scenery, no text anywhere. **[EXPRESSION]**
+
+Swap `[EXPRESSION]` for each of the four:
+
+| File | `[EXPRESSION]` |
+|---|---|
+| `idle` | Mouth closed in a gentle smile, calm and attentive, listening. |
+| `talk` | Mouth open mid-speech with the tongue visible, eyebrows up, clearly talking. |
+| `laugh` | Mouth open wide laughing, eyes squeezed shut into happy arcs, head tilted back slightly. |
+| `smug` | Mouth closed, one eyebrow raised, half-lidded knowing look, unimpressed. |
+
 ## Authoring notes
 
 - Square-ish canvas, transparent, at least 1024px tall. The dog should fill the frame
