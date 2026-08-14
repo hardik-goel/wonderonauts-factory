@@ -296,6 +296,63 @@ def canvas(sky_mode: str = "day", scale: int = SS):
     return img, d
 
 
+SPRITE_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sprites")
+
+_sprite_cache: dict = {}
+
+
+def sprite_path(name: str) -> str:
+    """Where a named sprite lives. `name` is a stem, e.g. "goofy/talk"."""
+    return os.path.normpath(os.path.join(SPRITE_ROOT, name + ".png"))
+
+
+def has_sprite(name: str) -> bool:
+    return os.path.isfile(sprite_path(name))
+
+
+def sprite(img: Image.Image, name: str, x: int, y: int, height: int,
+           facing: str = "right", anchor: str = "mb"):
+    """Composite a transparent character PNG onto the canvas.
+
+    The vector `dog()` primitive can only ever look like stacked ellipses, so
+    characters that need to read as drawn artwork come in as sprites instead.
+    Everything around them -- backdrops, bubbles, captions -- stays code-drawn.
+
+    `height` is the sprite's target height in LOGICAL units (the same 1920x1080
+    space every other primitive speaks); the canvas is supersampled, so the
+    paste is scaled by that factor here. Art is authored facing right and
+    mirrored for the other side, which halves how many files have to exist.
+
+    anchor: "mb" places (x, y) at the middle of the sprite's bottom edge, which
+    matches how dog() treats its paws, so a sprite drops into an existing scene
+    without moving anything.
+    """
+    path = sprite_path(name)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(
+            f"sprite {name!r} not found at {path}. See docs/SPRITES.md for the "
+            f"manifest of files this mode expects and how they are authored."
+        )
+    key = (path, os.path.getmtime(path))
+    art = _sprite_cache.get(key)
+    if art is None:
+        art = Image.open(path).convert("RGBA")
+        _sprite_cache[key] = art
+
+    s = _scale
+    target_h = max(1, int(round(height * s)))
+    target_w = max(1, int(round(art.width * target_h / art.height)))
+    out = art.resize((target_w, target_h), Image.LANCZOS)
+    if facing != "right":
+        out = out.transpose(Image.FLIP_LEFT_RIGHT)
+
+    px = int(round(x * s)) - (target_w // 2 if anchor[0] == "m" else 0)
+    py = int(round(y * s)) - (target_h if anchor[1] == "b" else 0)
+    img.alpha_composite(out, (px, py)) if img.mode == "RGBA" else img.paste(out, (px, py), out)
+    register_box("dog", (x - height * 0.42, y - height, x + height * 0.42, y))
+    return (px / s, py / s, (px + target_w) / s, (py + target_h) / s)
+
+
 def save(img: Image.Image, path: str) -> str:
     """Downsample to exactly 1920x1080 and write a PNG."""
     d = os.path.dirname(os.path.abspath(path))

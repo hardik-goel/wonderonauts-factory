@@ -1,0 +1,78 @@
+# Character sprites
+
+The vector `tk.dog()` primitive draws with flat ellipses and polygons. That is fine for
+the science episodes' props, but it cannot look like the painted cast reference in
+[`reference/cast-goofy-woofy.png`](reference/cast-goofy-woofy.png) — no amount of tuning
+the shapes gets fur, soft shading, or real muzzle structure.
+
+So the dad-jokes leads come in as **sprites**: transparent PNGs composited onto the frame
+by `tk.sprite()`. Everything around them — backdrops, bubbles, captions, end cards —
+stays code-drawn.
+
+```python
+tk.sprite(img, "goofy/talk", 470, 1010, 420, facing="right")
+#              name          x    y     height
+```
+
+- `x, y` is the **middle of the bottom edge**, matching how `dog()` treats its paws, so a
+  sprite drops into an existing scene without moving anything else.
+- `height` is in logical 1920x1080 units; the canvas is supersampled and the paste is
+  scaled to match.
+- Art is authored **facing right** and mirrored in code for the left-hand character.
+
+## Two hard constraints on the art
+
+1. **Transparent background, no shadow baked in.** The scene draws its own contact
+   shadow. A sprite carrying a white or scene background will paste as a visible
+   rectangle — exactly what the first pipeline test showed.
+2. **No text anywhere on the sprite.** Mirroring is what halves the file count, and it
+   reverses any lettering with it. The bone collar tags in the reference must therefore be
+   *blank* in the art — the names get drawn over the sprite in code, the right way round.
+   Same goes for slogans on mugs.
+
+## Manifest
+
+Minimum viable set — 8 files. Each dog sits, three-quarter view, facing right.
+
+| File | Who | Mouth | Used for |
+|---|---|---|---|
+| `goofy/idle.png` | Goofy | closed, smiling | listening |
+| `goofy/talk.png` | Goofy | open, tongue visible | has the line |
+| `goofy/laugh.png` | Goofy | open wide, eyes squeezed shut | punchline |
+| `goofy/smug.png` | Goofy | closed, one brow raised | setup |
+| `woofy/idle.png` | Woofy | closed, smiling | listening |
+| `woofy/talk.png` | Woofy | open, tongue visible | has the line |
+| `woofy/laugh.png` | Woofy | open wide, eyes squeezed shut | punchline |
+| `woofy/smug.png` | Woofy | closed, flat unimpressed stare | setup |
+
+Costumes multiply this set, so they are deliberately deferred. Two ways to handle them
+once the base set is proven, cheapest first:
+
+- **Draw them in code over the sprite** — the existing `outfit`/`holding` code already
+  produces hats, glasses, mugs and suits and could be layered on top. Cheap, flexible,
+  but a flat vector hat on painted art may look pasted on.
+- **Author per-costume sprites** — `goofy/space-talk.png` and so on. Looks right, but it
+  is 8 more files per costume and six settings currently want one.
+
+Decide that after seeing the base eight in a real frame.
+
+## Authoring notes
+
+- Square-ish canvas, transparent, at least 1024px tall. The dog should fill the frame
+  with a few pixels of margin; `tk.sprite()` scales by height, so consistent framing
+  across the set matters more than exact dimensions.
+- Keep the sitting pose and the eye line identical across a dog's four files. Anything
+  that shifts between expressions will read as a jump cut, because consecutive scenes
+  swap one file for another in the same position.
+- Goofy: golden retriever, warm gold coat, cream muzzle and chest, blue collar with a
+  blank bone tag. Woofy: border collie, near-black coat, white blaze, muzzle, chest and
+  paws, red collar with a blank bone tag.
+
+Full character definitions are in [`CAST.md`](CAST.md).
+
+## Status
+
+`tk.sprite()` is implemented and verified end to end — scaling, anchoring and mirroring
+all confirmed against a real frame. **No sprite art exists yet**, so nothing calls it: the
+dad-jokes mode still renders with the vector `dog()`. Adding the eight files above and
+switching `dogCall()` in `web/lib/dogs.ts` to emit `tk.sprite(...)` is the remaining work.
