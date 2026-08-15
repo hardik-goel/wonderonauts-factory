@@ -443,7 +443,11 @@ function beat(
     `    ${left}`,
     `    ${right}`,
     ...(setting.foreground ?? []).map((f) => `    ${f}`),
-    `    tk.thought_bubble(d, ${bx}, 330, w=${bw}, h=${bh}, tail_to=(${speakerIdx === 0 ? 520 : 1400}, 640),`,
+    // The tail has to stop above whoever is speaking. 640 was the vector dog's
+    // head top; sprite art stands taller, so a fixed value now lands the tail
+    // dots across the speaker's face. Derive it from the character height
+    // instead — see SPRITE_HEIGHT in toolkit.py.
+    `    tk.thought_bubble(d, ${bx}, 330, w=${bw}, h=${bh}, tail_to=(${speakerIdx === 0 ? 520 : 1400}, ${y - Math.round(470 * 1.15) - 18}),`,
     `                      text=${py(wrapped)}, text_size=58)`,
   ];
 }

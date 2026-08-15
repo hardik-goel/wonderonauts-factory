@@ -298,6 +298,8 @@ def canvas(sky_mode: str = "day", scale: int = SS):
 
 SPRITE_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "sprites")
 
+SPRITE_HEIGHT = 470        # logical units at scale 1.0; see character()
+
 _sprite_cache: dict = {}
 
 
@@ -600,10 +602,12 @@ def character(img: Image.Image, d: ScaledDraw, who: str, x: int, y: int,
 
     for name in names:
         if has_sprite(name):
-            # Sprites are authored at roughly the vector dog's sitting height,
-            # so the same `scale` a scene already passes keeps the two modes
-            # interchangeable without every caller being rewritten.
-            return sprite(img, name, x, y, int(round(360 * scale)), facing=facing)
+            # Sprite art has to be drawn taller than the vector dog to carry the
+            # same visual weight: the painted figure includes a swept tail and
+            # spread ears inside its bounding box, so at matched heights the
+            # body itself reads noticeably smaller than the vector version.
+            return sprite(img, name, x, y, int(round(SPRITE_HEIGHT * scale)),
+                          facing=facing)
 
     return dog(d, x, y, scale, facing=facing, speaking=speaking,
                expression=expression, outfit=outfit, holding=holding, **kw)

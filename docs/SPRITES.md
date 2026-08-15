@@ -156,10 +156,18 @@ goofy/talk         plain art, costume dropped
 tk.dog(...)        vector fallback
 ```
 
-All three branches are verified. **No sprite art is committed**, so every episode
-currently takes the third branch and renders exactly as before. Drop
-`assets/sprites/goofy/talk.png` in and that dog starts using it on the next render — no
-code change, no redeploy of the engine.
+**The base eight are committed and live.** Both leads render as painted artwork in every
+setting; the vector `dog()` is now only a fallback for art that does not exist yet, which
+in practice means costumes.
+
+Two things were tuned once real art was in a frame, both worth knowing before adding more:
+
+- `SPRITE_HEIGHT` is 470 logical units, not the vector dog's 360. Painted art carries a
+  swept tail and spread ears inside its bounding box, so at matched heights the body reads
+  noticeably smaller than the vector version did.
+- The speech bubble's tail target is derived from that height. It used to be a fixed
+  `640`, which was the vector dog's head top; against taller sprite art the tail dots
+  landed across the speaker's face.
 
 Two consequences of switching a dog to sprites, both by design:
 
